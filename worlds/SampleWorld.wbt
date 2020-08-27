@@ -290,7 +290,6 @@ DEF WALLTILES Group {
       floor TRUE
       bottomWall TRUE
       bottomExternal TRUE
-      start TRUE
       width 8
       height 8
       id "22"
