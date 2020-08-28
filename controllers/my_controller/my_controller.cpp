@@ -7,6 +7,7 @@ using namespace std;
 #include <webots/Gyro.hpp>
 #include <webots/GPS.hpp>
 #include <webots/LightSensor.hpp>
+#include <webots/Motor.hpp>
 
 using namespace webots;
 
@@ -26,14 +27,15 @@ LightSensor *rightHeat = robot->getLightSensor("right_heat_sensor");
 
 // Variable used to store our heading.
 double angle = 0;
-
+Motor *leftMotor = robot->getMotor("left wheel motor");
+Motor *rightMotor = robot->getMotor("right wheel motor");
 /*
  * Webots gyros return angular velocity along the 3 axes. To find angle, we need to integrate
  * angular velocity by multiplying by the timeStep. We only care about rotation around the y-axis AKA yaw.
  * The result is stored in the variable "angle" in radians.
  */
 void updateGyro(int timeStep) {
-    angle += (timeStep / 1000.0) * (gyro->getValues())[1];
+    angle += (timeStep / 1000.0) * (gyro->getValues())[0];
 }
 
 // Converts the current angle from radians into degrees.
@@ -58,9 +60,13 @@ int main(int argc, char **argv) {
   gps->enable(timeStep);
   leftHeat->enable(timeStep);
   rightHeat->enable(timeStep);
-
+  
+  leftMotor->setPosition(INFINITY);
+  rightMotor->setPosition(INFINITY);
   while (robot->step(timeStep) != -1) {
-
+    cout << "Sample: " << gyro->getSamplingPeriod() << "\n";
+    leftMotor->setVelocity(2);   //Set motors to spin at 10 radians per second
+    rightMotor->setVelocity(-2);
     /*
      * Uncomment each block of code to get an idea of what the sensor does.
      */
@@ -73,7 +79,8 @@ int main(int argc, char **argv) {
      * on the Webots documentation page: https://cyberbotics.com/doc/guide/epuck
      */
      
-    cout << "Proximity sensors: " << infrared[0]->getValue() << " " << infrared[2]->getValue() << " " << infrared[4]->getValue() << " " << infrared[6]->getValue() << endl;
+    //cout << "Front proximity sensors: " << infrared[0]->getValue() << " " << infrared[7]->getValue() << "\n";
+    //cout << "Side proximity sensors" << infrared[2]->getValue() << " " << infrared[5]->getValue() << "\n";
   
     /* Webots gyroscopes function like real life gyros, returning angular velocity instead of
      * directly returning angle heading. Therefore, we need to update our angle heading manually
@@ -83,7 +90,7 @@ int main(int argc, char **argv) {
      
     //Must call updateGyro() to update heading!
     updateGyro(timeStep);
-    cout << "Angular velocity: " << gyro->getValues()[1] << " Angle heading:" << getAngle() << endl;
+    cout << "Angular velocity: " << gyro->getValues()[0] << " " << getAngle() <<"\n";
   
     /*
      * The GPS sensor gives you your position relative to the world origin. This is the exact same
