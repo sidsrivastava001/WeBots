@@ -32,6 +32,7 @@ class Nav:
         else:  # If wall.txt does not exist
             print("Creating wall.txt!")
             self.filePtr = open('wall.txt', 'w+')
+            self.markVisited(writeToFile=True)
         if self.filePtr:
             print("Wall.txt is opened successfully")
         else:
@@ -47,7 +48,7 @@ class Nav:
             print("Read in:", row, col, typeOfData)
             if typeOfData == 'V':
                 print("Read visited!")
-                self.markVisited()
+                self.field[row][col].visited = True
             elif typeOfData == "VICTIM":
                 print("Read victim!")
                 self.field[row][col].victim = True
@@ -168,13 +169,14 @@ class Nav:
         self.filePtr.write(str(loc[0]) + ' ' + str(loc[1]) + ' ' + 'CHECKPOINT' + '\n')
         self.field[loc[0]][loc[1]].checkpoint = True  # Mark Victim
 
-    def markVisited(self, loc=None):
+    def markVisited(self, loc=None, writeToFile=True):
         if loc is None:  # Defualt loc to current location
             loc = self.location
         print("Wrote Visited to File!")
-        # Row, Col, Direction
-        self.filePtr.write(str(loc[0]) + ' ' + str(loc[1]) + ' ' + 'V' + '\n')
         self.field[loc[0]][loc[1]].visited = True  # Mark Victim
+        if writeToFile:
+            # Row, Col, Direction
+            self.filePtr.write(str(loc[0]) + ' ' + str(loc[1]) + ' ' + 'V' + '\n')
 
     # Marks seen victim at current location
     def markVictim(self, loc=None):
@@ -237,7 +239,7 @@ class Nav:
         self.direction = newDirection  # Update Direction
         self.previousLocation = self.location  # Update previous location
         self.location = newLocation  # Update location to new location
-        self.markVisited(newLocation)  # Mark new location as visited
+        self.markVisited(newLocation, writeToFile=True)  # Mark new location as visited
 
         # if commands == None: # Then backtrack home
         return commands
