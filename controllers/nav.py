@@ -38,7 +38,7 @@ class Nav:
         else:
             print("Wall.txt did not open successfully. . .")
             raise SystemExit
-            quit()
+
         # Read in whole file, and then turn string into list of words
         data = self.filePtr.read().split()
         while len(data) > 0:
@@ -84,7 +84,6 @@ class Nav:
         else:
             print("Direction Conversion Error!")
             raise SystemExit
-            quit()
 
     # Converts a command in str to int format or int to str format
     def convertCommand(self, command):
@@ -110,7 +109,6 @@ class Nav:
         else:
             print("Command Conversion Error!")
             raise SystemExit
-            quit()
 
     # This function returns the correct relative command for the robot to traverse. Call this funtion BEFORE you update self.location during calculate()!
     # @return Returns the needed command given circumstances and returns the new direction of the robot after executing this command
