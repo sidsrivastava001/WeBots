@@ -37,36 +37,32 @@ def go_forward(x):
         print("Going forward")
 def turn(deg):
     angle = 0
+    newangle = 0
     left_motor.setPosition(float("inf"))
     right_motor.setPosition(float("inf"))
     if(deg<0):
         left_motor.setVelocity(-2)
         right_motor.setVelocity(2)
-        while(robot.step(timestep) != -1 and angle>deg):
-            angle = angle+((timestep / 1000.0) * gyro.getValues()[1])
-            #angle = angle * 180 / math.pi;
-            print("Turning neg at", angle)
     else:
         left_motor.setVelocity(2)
         right_motor.setVelocity(-2)
-        while(robot.step(timestep) != -1 and angle<deg):
-            print("Gyro: ", gyro.getValues()[0])
-            angle = angle+((timestep / 1000.0) * gyro.getValues()[1])
-            angle = angle * 180 / 3.1415;
-            print("Turning pos at", angle)
+    newangle = 0
+    while(robot.step(timestep) != -1 and newangle<abs(deg)):
+        print("Gyro: ", gyro.getValues()[0])
+        angle = angle+abs(((timestep / 1000.0) * gyro.getValues()[0]))
+        newangle = angle * 180 / math.pi;
+        print("Turning pos at", newangle)
     left_motor.setVelocity(0)
     right_motor.setVelocity(0)
         # Main loop:
 # - perform simulation steps until Webots is stopping the controller
 go_forward(5)
-#turn(90)
-#turn(-90)
-angle = 0
+turn(90)
+turn(-90)
+print("Step", timestep)
+
 while robot.step(timestep) != -1:
     print("Gyro: ", gyro.getValues())
-    angle = angle+((timestep / 1000.0) * gyro.getValues()[1])
-    angle = angle * 180 / 3.1415;
-    print("Turning pos at", angle)
     #print(left_encoder.getValue())
     #print(right_encoder.getValue())
     # Read the sensors:
