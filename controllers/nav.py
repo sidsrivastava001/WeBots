@@ -32,7 +32,7 @@ class Nav:
         else:  # If wall.txt does not exist
             print("Creating wall.txt!")
             self.filePtr = open('wall.txt', 'w+')
-            self.markVisited(writeToFile=True)
+            self.markVisited(writeToFile=True) # mark visited and write to file at starting location to make sure robot knows it is visited
         if self.filePtr:
             print("Wall.txt is opened successfully")
         else:
@@ -59,7 +59,7 @@ class Nav:
                 self.startPosition = (row, col)
             else:  # Data is giving a wall direction
                 self.markWall(typeOfData, (row, col), writeToFile=False)
-        # mark victim at current location to make sure robot knows current tile is visited
+        print()
 
     # Converts a direction in str to int format or int to str format
     def convertDirection(self, direction):
@@ -170,7 +170,7 @@ class Nav:
     def markVisited(self, loc=None, writeToFile=True):
         if loc is None:  # Defualt loc to current location
             loc = self.location
-        print("Wrote Visited to File!")
+        print("Wrote", str(loc[0]) + ' ' + str(loc[1]) + ' ' + 'V', "to File!")
         self.field[loc[0]][loc[1]].visited = True  # Mark Victim
         if writeToFile:
             # Row, Col, Direction
@@ -234,12 +234,16 @@ class Nav:
         if not foundMove:  # Need to BFS
             commands, newLocation, newDirection = self.backtrackBFS()
 
+        # if commands == None: # Visited all possible tiles
+            # Then backtrack home
+
         self.direction = newDirection  # Update Direction
         self.previousLocation = self.location  # Update previous location
         self.location = newLocation  # Update location to new location
         self.markVisited(newLocation, writeToFile=True)  # Mark new location as visited
-
-        # if commands == None: # Then backtrack home
+        
+        print("Commands:", commands)
+        print()
         return commands
 
     # Finds the path to the nearest unvisited tile via BFS

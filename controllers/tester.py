@@ -5,7 +5,7 @@ AI = Nav()
 #AI.markWall(3)
 #AI.markVisited((4,4))
 x = AI.calculate()
-print(x)
+
 '''
  0,0 --> 1,0
 UP
