@@ -4,7 +4,7 @@ WorldInfo {
 }
 Viewpoint {
   orientation -0.9998711621982785 -0.015608001726188285 -0.0037482377698471853 0.47130921224470157
-  position 0.01624367678366032 0.2446105490238581 0.6011329749803169
+  position 0.013539898759922028 0.42841855594234757 0.9618558298985617
 }
 TexturedBackground {
 }
@@ -974,7 +974,7 @@ DEF HUMANGROUP Group {
 DEF ROBOT0 E-puck-custom {
   translation 0 -0.03 0
   name "e-puck 0"
-  controller "my_controller"
+  controller "movement_test"
   camera_fieldOfView 1
   camera_width 128
   camera_height 128
@@ -987,5 +987,6 @@ DEF MAINSUPERVISOR Robot {
   ]
   controller "MainSupervisor"
   supervisor TRUE
+  showWindow TRUE
   window "MainSupervisorWindow"
 }
