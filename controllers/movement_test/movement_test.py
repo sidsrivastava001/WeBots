@@ -3,7 +3,11 @@
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
 from controller import Robot
+from nav import Nav
 import math
+
+# Initialize the AI Navigator
+AI = Nav()
 
 # create the Robot instance.
 robot = Robot()
@@ -17,6 +21,8 @@ frontl = 0
 frontr = 0
 left = 0
 right = 0
+backl = 0
+backr = 0
 
 left_motor = robot.getMotor("left wheel motor")
 right_motor = robot.getMotor("right wheel motor")
@@ -34,6 +40,9 @@ front_sensor_r = robot.getDistanceSensor("ps0")
 
 left_sensor = robot.getDistanceSensor("ps5")
 right_sensor = robot.getDistanceSensor("ps2")
+
+back_sensor_l = robot.getDistanceSensor("ps3")
+back_sensor_r = robot.getDistanceSensor("ps4")
 # get the time step of the current world.
 timestep = int(robot.getBasicTimeStep())
 
@@ -46,13 +55,15 @@ front_sensor_l.enable(timestep)
 front_sensor_r.enable(timestep)
 left_sensor.enable(timestep)
 right_sensor.enable(timestep)
+back_sensor_l.enable(timestep)
+back_sensor_r.enable(timestep)
 
 def update_sensors():
-    global angle, newangle, posLeft, posRight, frontl, frontr, left, right
+    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr
     #print("Gyro", gyro.getValues()[0])
     angle = angle+((timestep / 1000.0) * gyro.getValues()[0])
     newangle = angle * 180 / math.pi
-    print("Angle", newangle)
+    #print("Angle", newangle)
     
     newangle = newangle-(360*math.floor(newangle/360))
     """
@@ -70,6 +81,8 @@ def update_sensors():
     frontr = front_sensor_r.getValue()
     left = left_sensor.getValue()
     right = right_sensor.getValue()
+    backl = back_sensor_l.getValue()
+    backr = back_sensor_r.getValue()
     #print("Updated", posLeft, posRight)
 # You should insert a getDevice-like function in order to get the
 # instance of a device of the robot. Something like:
@@ -105,11 +118,11 @@ def turn(deg):
         error = deg-newangle
         
         if(error > 180):
-            error = 360 - error;
+            error = 360 - error
         elif(error < -180):
-            error += 360;
-        totalerror = totalerror+error;
-        speed = error * kP + totalerror * kI;
+            error += 360
+        totalerror = totalerror+error
+        speed = error * kP + totalerror * kI
         #print("Error", error)
         #print("Total error", totalerror)
         #print("Speed", speed)
@@ -126,7 +139,7 @@ def turn(deg):
 # - perform simulation steps until Webots is stopping the controller
 def goTile(dir):
     global pos
-    if(dir == 'R'):
+    if(dir == AI.convertCommand(1)):
 
         pos =(-90+pos)%360
     
@@ -135,7 +148,7 @@ def goTile(dir):
         if(pos<-180):
             pos = pos+360       
         print("Pos", pos)
-    if(dir == 'L'):
+    if(dir == AI.convertCommand(3)):
         
         pos =(90+pos)%360
     
@@ -145,7 +158,7 @@ def goTile(dir):
             pos = pos+360
         
         print("Pos", pos)
-    if(dir == 'L'):
+    if(dir == AI.convertCommand(2)):
         
         pos =(180+pos)%360
     
@@ -162,8 +175,29 @@ def goTile(dir):
 print(left_heat_sensor.getValue())
 print(right_heat_sensor.getValue())
 pos = 0
+
+# Task main()
 while robot.step(timestep) != -1:
     update_sensors()
+    if(frontl <= 0.1 and frontr<=0.1):
+        print("Wall in front")
+        AI.markWall(AI.direction)
+    if(right <= 0.1):
+        print("Wall to right")
+        AI.markWall((1 + AI.direction) % 4)
+    if(backl <= 0.1 and backr <= 0.1):
+        print("Wall to back")
+        AI.markWall((2 + AI.direction) % 4)
+    if(left <= 0.1):
+        print("Wall to left")
+        AI.markWall((3 + AI.direction) % 4)
+   
+    commands = AI.calculate() # Get commands
+
+    for command in commands:
+       goTile(command)
+
+    """
     if(frontl > 0.1 and frontr>0.1):
         goTile('F')
     elif(right > 0.1):
@@ -172,7 +206,7 @@ while robot.step(timestep) != -1:
         goTile('L')
     else:
         goTile('B')
-    
+    """
     
     """
     goTile('F')

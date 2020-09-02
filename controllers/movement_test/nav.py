@@ -27,7 +27,7 @@ class Nav:
         self.location = self.startPosition
         self.direction = 0  # The current direction of the robot
         self.previousLocation = (-1, -1)
-        if os.path.isfile('wall.txt'):
+        if os.path.isfile('wall.txt'): # If wall.txt already exists
             self.filePtr = open("wall.txt", 'r+')
         else:  # If wall.txt does not exist
             print("Creating wall.txt!")
@@ -224,9 +224,9 @@ class Nav:
         newDirection, newLocation, foundMove, commands = 1, (-1, -1), False, list()  # Default values
         for direction in range(0, 4):
             moveIsPossible, newLocation = self.canMove(
-                direction, backtrack=False)
+                ((direction + self.direction)%4), backtrack=False)
             if moveIsPossible:
-                command, newDirection = self.determineCommand( self.direction, newLocation)
+                command, newDirection = self.determineCommand(self.direction, newLocation)
                 commands.append(command)
                 foundMove = True
                 break
