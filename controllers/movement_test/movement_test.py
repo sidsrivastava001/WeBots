@@ -13,7 +13,10 @@ posRight = 0
 angle = 0
 newangle = 0
 pos = 0
-
+frontl = 0
+frontr = 0
+left = 0
+right = 0
 
 left_motor = robot.getMotor("left wheel motor")
 right_motor = robot.getMotor("right wheel motor")
@@ -25,6 +28,12 @@ left_heat_sensor = robot.getLightSensor("left_heat_sensor")
 right_heat_sensor = robot.getLightSensor("right_heat_sensor")
     
 gyro = robot.getGyro("gyro")
+
+front_sensor_l = robot.getDistanceSensor("ps7")
+front_sensor_r = robot.getDistanceSensor("ps0")
+
+left_sensor = robot.getDistanceSensor("ps5")
+right_sensor = robot.getDistanceSensor("ps2")
 # get the time step of the current world.
 timestep = int(robot.getBasicTimeStep())
 
@@ -33,9 +42,13 @@ right_encoder.enable(timestep)
 gyro.enable(timestep)
 left_heat_sensor.enable(timestep)
 right_heat_sensor.enable(timestep)
+front_sensor_l.enable(timestep)
+front_sensor_r.enable(timestep)
+left_sensor.enable(timestep)
+right_sensor.enable(timestep)
 
 def update_sensors():
-    global angle, newangle, posLeft, posRight
+    global angle, newangle, posLeft, posRight, frontl, frontr, left, right
     #print("Gyro", gyro.getValues()[0])
     angle = angle+((timestep / 1000.0) * gyro.getValues()[0])
     newangle = angle * 180 / math.pi
@@ -53,6 +66,10 @@ def update_sensors():
     #print("New angle", newangle)
     posLeft = left_encoder.getValue()
     posRight = right_encoder.getValue()
+    frontl = front_sensor_l.getValue()
+    frontr = front_sensor_r.getValue()
+    left = left_sensor.getValue()
+    right = right_sensor.getValue()
     #print("Updated", posLeft, posRight)
 # You should insert a getDevice-like function in order to get the
 # instance of a device of the robot. Something like:
@@ -128,6 +145,16 @@ def goTile(dir):
             pos = pos+360
         
         print("Pos", pos)
+    if(dir == 'L'):
+        
+        pos =(180+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        
+        print("Pos", pos)
     turn(pos)
     go_forward(5.9)
      
@@ -137,21 +164,33 @@ print(right_heat_sensor.getValue())
 pos = 0
 while robot.step(timestep) != -1:
     update_sensors()
-
-    goTile('F')
-    goTile('F')
-    goTile('F')
-    goTile('R')
-    goTile('F')
-    goTile('L')
-    goTile('F')
-    goTile('R')
-    goTile('F')
-    goTile('R')
-    goTile('R')
-    goTile('L')
-    goTile('F')
+    if(frontl > 0.1 and frontr>0.1):
+        goTile('F')
+    elif(right > 0.1):
+        goTile('R')
+    elif(left > 0.1):
+        goTile('L')
+    else:
+        goTile('B')
     
+    
+    """
+    goTile('F')
+    goTile('F')
+    goTile('F')
+    print(frontl, frontr, left, right)
+    
+    goTile('R')
+    goTile('F')
+    goTile('L')
+    goTile('F')
+    goTile('R')
+    goTile('F')
+    goTile('R')
+    goTile('R')
+    goTile('L')
+    goTile('F')
+    """
     """
     go_forward(5.9)
     newpos =(-90+pos)%360
