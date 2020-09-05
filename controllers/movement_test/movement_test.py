@@ -196,6 +196,8 @@ while robot.step(timestep) != -1:
 
     for command in commands:
        goTile(command)
+       
+    AI.flush() # Actually write data to file
 
     """
     if(frontl > 0.1 and frontr>0.1):

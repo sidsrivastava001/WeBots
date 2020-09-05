@@ -33,6 +33,7 @@ class Nav:
             print("Creating wall.txt!")
             self.filePtr = open('wall.txt', 'w+')
             self.markVisited(writeToFile=True) # mark visited and write to file at starting location to make sure robot knows it is visited
+            self.filePtr.flush()
         if self.filePtr:
             print("Wall.txt is opened successfully")
         else:
@@ -60,6 +61,11 @@ class Nav:
             else:  # Data is giving a wall direction
                 self.markWall(typeOfData, (row, col), writeToFile=False)
         print()
+
+    #If wall data and victim data looks solid, then all data in buffer will actually be written to file.
+    def flush(self):
+        self.filePtr.flush()
+        print("Flushed data buffer to file!")
 
     # Converts a direction in str to int format or int to str format
     def convertDirection(self, direction):
@@ -155,17 +161,19 @@ class Nav:
             # Row, Col, Direction
             self.filePtr.write(str(loc[0]) + ' ' +
                                str(loc[1]) + ' ' + direction + '\n')
-            print("Entered & wrote wall: ", direction)
+            #self.filePtr.flush()
+            print("Entered & wrote wall: ", direction, 'at:', loc[0], loc[1])
         else:
-            print("Entered wall: ", direction)
+            print("Entered wall: ", direction, 'at:', loc[0], loc[1])
 
     def markCheckpoint(self, loc=None):
         if loc is None:  # Defualt loc to current location
             loc = self.location
-        print("Wrote Checkpoint to File!")
+        print("Wrote:", '\"' + str(loc[0]), str(loc[1]), 'CHECKPOINT' + '\"', "to File!")
         # Row, Col, Direction
         self.filePtr.write(str(loc[0]) + ' ' + str(loc[1]) + ' ' + 'CHECKPOINT' + '\n')
         self.field[loc[0]][loc[1]].checkpoint = True  # Mark Victim
+        #self.filePtr.flush()
 
     def markVisited(self, loc=None, writeToFile=True):
         if loc is None:  # Defualt loc to current location
@@ -175,16 +183,18 @@ class Nav:
         if writeToFile:
             # Row, Col, Direction
             self.filePtr.write(str(loc[0]) + ' ' + str(loc[1]) + ' ' + 'V' + '\n')
+           # self.filePtr.flush()
 
     # Marks seen victim at current location
     def markVictim(self, loc=None):
         if loc is None:  # Defualt loc to current location
             loc = self.location
-        print("Wrote Victim to File!")
+        print("Wrote Victim to File at:", loc[0], loc[1])
         # Row, Col, Direction
         self.filePtr.write(str(loc[0]) + ' ' +
                            str(loc[1]) + ' ' + 'VICTIM' + '\n')
         self.field[loc[0]][loc[1]].victim = True  # Mark Victim
+        #self.filePtr.flush()
 
     # Function if want to move up
     # if backtrack = true, only returns if you can or can't move up. If you can, then also returns coordinates
