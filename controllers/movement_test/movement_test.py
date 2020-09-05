@@ -197,6 +197,7 @@ while robot.step(timestep) != -1:
     for command in commands:
        goTile(command)
        
+    # Only write to file once commands are successfully executed
     AI.flush() # Actually write data to file
 
     """

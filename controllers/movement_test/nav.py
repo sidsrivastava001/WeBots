@@ -244,8 +244,13 @@ class Nav:
         if not foundMove:  # Need to BFS
             commands, newLocation, newDirection = self.backtrackBFS()
 
-        # if commands == None: # Visited all possible tiles
-            # Then backtrack home
+        if commands == None: # Visited all possible tiles
+            print("!!!GOING BACK HOME!!!")
+            commands, newLocation, newDirection = self.backtrackHomeBFS() # Then backtrack home
+            if len(commands)==0:
+                print("Already at home. Finishing program!")
+                #Send Signal
+                exit(0)
 
         self.direction = newDirection  # Update Direction
         self.previousLocation = self.location  # Update previous location
@@ -291,6 +296,58 @@ class Nav:
         # Now it's time to backtrack each location! One by One!
         locations = [targetLocation]
         newPosition = list(targetLocation)
+        while newPosition != self.location:
+            newPosition = prevCell[newPosition[0]][newPosition[1]]
+            locations.append(newPosition)
+        locations.reverse()
+
+        # With each tile's coordinates on the path, we can now calculate the commands
+        commands = list()
+        currentPosition = locations[0]
+        currentDirection = self.direction
+        i = 1
+        while i < len(locations):
+            newPosition = locations[i]
+            command, newDirection = self.determineCommand(currentDirection, newPosition, oldPosition=currentPosition)
+            commands.append(command)
+            currentPosition = newPosition
+            currentDirection = newDirection
+            i += 1
+
+        return commands, currentPosition, currentDirection
+
+    # Finds the path to the nearest unvisited tile via BFS
+    # @return Returns the set of commands to reach the new location, the new location's coordinates, and the new direction. Does NOT update location & direction for you
+    def backtrackHomeBFS(self):
+        if self.location == self.initialPosition:
+            return [], self.initialPosition, self.direction
+        print("BFS Home Initiated!")
+        # visited = [[False]*self.cols]*self.rows  # Visited array
+        visited = [[False for j in range(self.cols)] for i in range(self.rows)]
+        # prevCell = [(-1, -1)*self.cols]*self.rows  # Previous cell array
+        prevCell = [[[-1, -1] for j in range(self.cols)] for i in range(self.rows)]
+        queue = list()
+        queue.append(self.location)  # first add current location
+        while len(queue) > 0:
+            currentCell = queue.pop(0)
+            visited[currentCell[0]][currentCell[1]] = True
+            for direction in range(0, 4):
+                moveIsPossible, newCell = self.canMove(direction, currentCell, backtrack=True)
+                if moveIsPossible:
+                    # if new cell is the home tile and possible to access
+                    if self.field[newCell[0]][newCell[1]].visited == False:
+                        prevCell[newCell[0]][newCell[1]] = (currentCell[0], currentCell[1])
+                        break
+                    # new cell is not in the queue and new cell has not been visited yet
+                    elif (not newCell in queue) and visited[newCell[0]][newCell[1]] == False:
+                        prevCell[newCell[0]][newCell[1]] = (currentCell[0], currentCell[1])
+                        queue.append(newCell)
+                    else:
+                        pass
+
+        # Now it's time to backtrack each location! One by One!
+        locations = [self.initialPosition]
+        newPosition = list(self.initialPosition)
         while newPosition != self.location:
             newPosition = prevCell[newPosition[0]][newPosition[1]]
             locations.append(newPosition)
