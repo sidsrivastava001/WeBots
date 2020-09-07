@@ -33,6 +33,7 @@ class Nav:
             print("Creating wall.txt!")
             self.filePtr = open('wall.txt', 'w+')
             self.markVisited(writeToFile=True) # mark visited and write to file at starting location to make sure robot knows it is visited
+            self.filePtr.flush()
         if self.filePtr:
             print("Wall.txt is opened successfully")
         else:
@@ -60,6 +61,11 @@ class Nav:
             else:  # Data is giving a wall direction
                 self.markWall(typeOfData, (row, col), writeToFile=False)
         print()
+
+    #If wall data and victim data looks solid, then all data in buffer will actually be written to file.
+    def flush(self):
+        self.filePtr.flush()
+        print("Flushed data buffer to file!")
 
     # Converts a direction in str to int format or int to str format
     def convertDirection(self, direction):
@@ -155,17 +161,19 @@ class Nav:
             # Row, Col, Direction
             self.filePtr.write(str(loc[0]) + ' ' +
                                str(loc[1]) + ' ' + direction + '\n')
-            print("Entered & wrote wall: ", direction)
+            #self.filePtr.flush()
+            print("Entered & wrote wall: ", direction, 'at:', loc[0], loc[1])
         else:
-            print("Entered wall: ", direction)
+            print("Entered wall: ", direction, 'at:', loc[0], loc[1])
 
     def markCheckpoint(self, loc=None):
         if loc is None:  # Defualt loc to current location
             loc = self.location
-        print("Wrote Checkpoint to File!")
+        print("Wrote:", '\"' + str(loc[0]), str(loc[1]), 'CHECKPOINT' + '\"', "to File!")
         # Row, Col, Direction
         self.filePtr.write(str(loc[0]) + ' ' + str(loc[1]) + ' ' + 'CHECKPOINT' + '\n')
         self.field[loc[0]][loc[1]].checkpoint = True  # Mark Victim
+        #self.filePtr.flush()
 
     def markVisited(self, loc=None, writeToFile=True):
         if loc is None:  # Defualt loc to current location
@@ -175,16 +183,18 @@ class Nav:
         if writeToFile:
             # Row, Col, Direction
             self.filePtr.write(str(loc[0]) + ' ' + str(loc[1]) + ' ' + 'V' + '\n')
+           # self.filePtr.flush()
 
     # Marks seen victim at current location
     def markVictim(self, loc=None):
         if loc is None:  # Defualt loc to current location
             loc = self.location
-        print("Wrote Victim to File!")
+        print("Wrote Victim to File at:", loc[0], loc[1])
         # Row, Col, Direction
         self.filePtr.write(str(loc[0]) + ' ' +
                            str(loc[1]) + ' ' + 'VICTIM' + '\n')
         self.field[loc[0]][loc[1]].victim = True  # Mark Victim
+        #self.filePtr.flush()
 
     # Function if want to move up
     # if backtrack = true, only returns if you can or can't move up. If you can, then also returns coordinates
@@ -234,8 +244,13 @@ class Nav:
         if not foundMove:  # Need to BFS
             commands, newLocation, newDirection = self.backtrackBFS()
 
-        # if commands == None: # Visited all possible tiles
-            # Then backtrack home
+        if commands == None: # Visited all possible tiles
+            print("!!!GOING BACK HOME!!!")
+            commands, newLocation, newDirection = self.backtrackHomeBFS() # Then backtrack home
+            if len(commands)==0:
+                print("Already at home. Finishing program!")
+                #Send Signal
+                exit(0)
 
         self.direction = newDirection  # Update Direction
         self.previousLocation = self.location  # Update previous location
@@ -281,6 +296,58 @@ class Nav:
         # Now it's time to backtrack each location! One by One!
         locations = [targetLocation]
         newPosition = list(targetLocation)
+        while newPosition != self.location:
+            newPosition = prevCell[newPosition[0]][newPosition[1]]
+            locations.append(newPosition)
+        locations.reverse()
+
+        # With each tile's coordinates on the path, we can now calculate the commands
+        commands = list()
+        currentPosition = locations[0]
+        currentDirection = self.direction
+        i = 1
+        while i < len(locations):
+            newPosition = locations[i]
+            command, newDirection = self.determineCommand(currentDirection, newPosition, oldPosition=currentPosition)
+            commands.append(command)
+            currentPosition = newPosition
+            currentDirection = newDirection
+            i += 1
+
+        return commands, currentPosition, currentDirection
+
+    # Finds the path to the nearest unvisited tile via BFS
+    # @return Returns the set of commands to reach the new location, the new location's coordinates, and the new direction. Does NOT update location & direction for you
+    def backtrackHomeBFS(self):
+        if self.location == self.initialPosition:
+            return [], self.initialPosition, self.direction
+        print("BFS Home Initiated!")
+        # visited = [[False]*self.cols]*self.rows  # Visited array
+        visited = [[False for j in range(self.cols)] for i in range(self.rows)]
+        # prevCell = [(-1, -1)*self.cols]*self.rows  # Previous cell array
+        prevCell = [[[-1, -1] for j in range(self.cols)] for i in range(self.rows)]
+        queue = list()
+        queue.append(self.location)  # first add current location
+        while len(queue) > 0:
+            currentCell = queue.pop(0)
+            visited[currentCell[0]][currentCell[1]] = True
+            for direction in range(0, 4):
+                moveIsPossible, newCell = self.canMove(direction, currentCell, backtrack=True)
+                if moveIsPossible:
+                    # if new cell is the home tile and possible to access
+                    if self.field[newCell[0]][newCell[1]].visited == False:
+                        prevCell[newCell[0]][newCell[1]] = (currentCell[0], currentCell[1])
+                        break
+                    # new cell is not in the queue and new cell has not been visited yet
+                    elif (not newCell in queue) and visited[newCell[0]][newCell[1]] == False:
+                        prevCell[newCell[0]][newCell[1]] = (currentCell[0], currentCell[1])
+                        queue.append(newCell)
+                    else:
+                        pass
+
+        # Now it's time to backtrack each location! One by One!
+        locations = [self.initialPosition]
+        newPosition = list(self.initialPosition)
         while newPosition != self.location:
             newPosition = prevCell[newPosition[0]][newPosition[1]]
             locations.append(newPosition)

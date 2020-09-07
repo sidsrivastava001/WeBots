@@ -251,6 +251,14 @@ while robot.step(timestep) != -1:
     else:
         goTileWithVictim(commands[0])
 
+<<<<<<< HEAD
+=======
+    for command in commands:
+       goTile(command)
+       
+    # Only write to file once commands are successfully executed
+    AI.flush() # Actually write data to file
+>>>>>>> 63abe5d192929796dc403eab0344944a523d5821
 
     """
     if(frontl > 0.1 and frontr>0.1):
