@@ -16,6 +16,7 @@ posLeft = 0
 posRight = 0
 angle = 0
 newangle = 0
+prevAngle = 0
 pos = 0
 frontl = 0
 frontr = 0
@@ -23,6 +24,8 @@ left = 0
 right = 0
 backl = 0
 backr = 0
+leftheat = 0
+rightheat = 0
 
 left_motor = robot.getMotor("left wheel motor")
 right_motor = robot.getMotor("right wheel motor")
@@ -34,6 +37,7 @@ left_heat_sensor = robot.getLightSensor("left_heat_sensor")
 right_heat_sensor = robot.getLightSensor("right_heat_sensor")
     
 gyro = robot.getGyro("gyro")
+emitter = robot.getEmitter("emitter")
 
 front_sensor_l = robot.getDistanceSensor("ps7")
 front_sensor_r = robot.getDistanceSensor("ps0")
@@ -59,9 +63,11 @@ back_sensor_l.enable(timestep)
 back_sensor_r.enable(timestep)
 
 def update_sensors():
-    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr
+    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr, prevAngle, leftheat, rightheat
     #print("Gyro", gyro.getValues()[0])
-    angle = angle+((timestep / 1000.0) * gyro.getValues()[0])
+    curr = gyro.getValues()[0]
+    angle = angle+((timestep / 1000.0) * (curr+prevAngle)/2)
+    prevAngle = curr
     newangle = angle * 180 / math.pi
     #print("Angle", newangle)
     
@@ -83,12 +89,16 @@ def update_sensors():
     right = right_sensor.getValue()
     backl = back_sensor_l.getValue()
     backr = back_sensor_r.getValue()
+    leftheat = left_heat_sensor.getValue()
+    rightheat = right_heat_sensor.getValue()
     #print("Updated", posLeft, posRight)
 # You should insert a getDevice-like function in order to get the
 # instance of a device of the robot. Something like:
 #  motor = robot.getMotor('motorname')
 #  ds = robot.getDistanceSensor('dsname')
 #  ds.enable(timestep)
+
+
 def go_forward(x):
     global posLeft, posRight
     left_motor.setPosition(posLeft+x)
@@ -170,6 +180,47 @@ def goTile(dir):
         print("Pos", pos)
     turn(pos)
     go_forward(5.9)
+    
+def goTileWithVictim(dir):
+    global pos
+    victim = 0
+    if(leftheat>30 or rightheat>30):
+        print("SEE VICTIM")
+        victim = 1
+    if(dir == AI.convertCommand(1)):
+
+        pos =(-90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360       
+        print("Pos", pos)
+    if(dir == AI.convertCommand(3)):
+        
+        pos =(90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        
+        print("Pos", pos)
+    if(dir == AI.convertCommand(2)):
+        
+        pos =(180+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        
+        print("Pos", pos)
+    turn(pos)
+    if((leftheat>30 or rightheat>30) and victim != 1):
+        print("SEE VICTIM")
+    go_forward(5.9)
+
      
 #go_forward(5.85)
 print(left_heat_sensor.getValue())
@@ -193,9 +244,13 @@ while robot.step(timestep) != -1:
         AI.markWall((3 + AI.direction) % 4)
    
     commands = AI.calculate() # Get commands
+    if(len(commands)>1):
+        for command in commands:
+           goTile(command)
+           update_sensors()
+    else:
+        goTileWithVictim(commands[0])
 
-    for command in commands:
-       goTile(command)
 
     """
     if(frontl > 0.1 and frontr>0.1):
