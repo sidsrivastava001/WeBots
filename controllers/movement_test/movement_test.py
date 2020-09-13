@@ -6,11 +6,13 @@ from controller import Robot
 from nav import Nav
 import math
 import struct
+import time
 
 def clearFile():
         print("Clearing file!")
         filePtr = open('wall.txt', 'w+')
         filePtr.truncate(0)
+        filePtr.write('10 10 V\n')
         filePtr.close()
 
 clearFile()
@@ -37,6 +39,9 @@ rightheat = 0
 colorval = ""
 posX = 0
 posZ = 0
+
+hole_colour = b'\x1e\x1e\x1e\xff'
+swamp_colour = b'R\x89\xa7\xff'
 
 left_motor = robot.getMotor("left wheel motor")
 right_motor = robot.getMotor("right wheel motor")
@@ -107,18 +112,17 @@ def sendVictimMessage(victimType='N'):
 '''
 
 def sendMessage(victimType='T'):
-    global messageSent
     position = gps.getValues()
     #robot type, position x cm, position z cm, victim type
     if victimType=='T':
         print("Sending message")
-        message = struct.pack('i i c', int(position[0] * 100), int(position[1] * 100), b"T")
+        message = struct.pack('i i c', int(position[0] * 100), int(position[2] * 100), b"T")
     elif victimType=="H":
         print("Sending message")
-        message = struct.pack('i i c', int(position[0] * 100), int(position[1] * 100), b"H")
+        message = struct.pack('i i c', int(position[0] * 100), int(position[2] * 100), b"H")
     elif victimType=="S":
         print("Sending message")
-        message = struct.pack('i i c', int(position[0] * 100), int(position[1] * 100), b"S")
+        message = struct.pack('i i c', int(position[0] * 100), int(position[2] * 100), b"S")
     elif victimType=="U":
         print("Sending message")
         message = struct.pack('i i c', int(position[0] * 100), int(position[1] * 100), b"U")
@@ -159,7 +163,7 @@ def update_sensors():
     posX = gps.getValues()[1]
     posZ = gps.getValues()[2]
 
-    print("Updated", posX, posZ)
+    #print("Updated", posX, posZ)
 # You should insert a getDevice-like function in order to get the
 # instance of a device of the robot. Something like:
 #  motor = robot.getMotor('motorname')
@@ -168,23 +172,29 @@ def update_sensors():
 
 # Robot stops for three seconds
 def stop():
-    left_motor.setVelocity(0)
-    right_motor.setVelocity(0)
+    start = robot.getTime()
+    while(robot.step(timestep) != -1 and (robot.getTime()-start)<3):
+        update_sensors()
+    update_sensors()
+     # Sleep for 3 seconds
 
 def go_forward(x):
     global posLeft, posRight
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
-    print("Targets", left_motor.getTargetPosition())
     left_motor.setVelocity(2)
     right_motor.setVelocity(2)
     left = left_encoder.getValue()
     print("Starting, ", (left))
-    while(robot.step(timestep) != -1 and abs(left-left_motor.getTargetPosition())>=0.005):
+
+    right = right_encoder.getValue()    
+    while(robot.step(timestep) != -1 and abs(left-left_motor.getTargetPosition())>=0.005 and abs(right-right_motor.getTargetPosition())>=0.005):
         update_sensors()
         right_motor.setVelocity(left_motor.getVelocity())
         #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
+        #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
         left = left_encoder.getValue()
+        right = right_encoder.getValue()
     left_motor.setVelocity(0)
     right_motor.setVelocity(0)
     update_sensors()
@@ -256,7 +266,7 @@ def goTile(dir):
         
         print("Pos", pos)
     turn(pos)
-    go_forward(6.08)
+    go_forward(6.0)
     
 def goTileWithVictim(dir):
     global pos
@@ -264,6 +274,7 @@ def goTileWithVictim(dir):
     if(leftheat>30 or rightheat>30):
         print("SEE VICTIM")
         sendMessage('T')
+        stop()
         victim = 1
     if(dir == AI.convertCommand(1)):
 
@@ -294,13 +305,38 @@ def goTileWithVictim(dir):
             pos = pos+360
         
         print("Pos", pos)
+    if(frontl<=0.1 and frontr<=0.1):
+        left_motor.setPosition(float("inf"))
+        right_motor.setPosition(float("inf"))
+        calcfront = 0.95510271724 * frontl
+        optimalFrontDistance = 0.04
+        while(robot.step(timestep) != -1 and calcfront>optimalFrontDistance):
+            update_sensors()
+            left_motor.setVelocity(0.5)
+            right_motor.setVelocity(0.5)
+            print("Calc", calcfront)
+            calcfront = 0.95510271724 * frontl
+        left_motor.setVelocity(0)
+        right_motor.setVelocity(0)
+        update_sensors()
+        while(robot.step(timestep) != -1 and calcfront<optimalFrontDistance):
+            update_sensors()
+            left_motor.setVelocity(-0.5)
+            right_motor.setVelocity(-0.5)
+            print("Calc", calcfront)
+            calcfront = 0.95510271724 * frontl
+        left_motor.setVelocity(0)
+        right_motor.setVelocity(0)
+        update_sensors()
     turn(pos)
 
     # HEAT VICTIM DETECTION
     if((leftheat>30 or rightheat>30) and victim != 1):
         print("SEE VICTIM")
         sendMessage('T')
-    go_forward(6.08)
+        stop()
+    
+    go_forward(6.0)
 
 #go_forward(5.85)
 print(left_heat_sensor.getValue())
