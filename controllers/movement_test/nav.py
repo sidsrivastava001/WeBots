@@ -67,6 +67,8 @@ class Nav:
         self.filePtr.flush()
         print("Flushed data buffer to file!")
 
+    # Clears wall.txt
+
     # Converts a direction in str to int format or int to str format
     def convertDirection(self, direction):
         if isinstance(direction, str):
