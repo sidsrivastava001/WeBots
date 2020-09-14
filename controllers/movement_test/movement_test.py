@@ -7,6 +7,8 @@ from nav import Nav
 import math
 import struct
 import time
+import cv2
+import numpy as np
 
 def clearFile():
         print("Clearing file!")
@@ -42,6 +44,7 @@ posZ = 0
 optimalFrontDistance = 0.04 # For front callibration
 
 hole_colour = b'\x1e\x1e\x1e\xff'
+hole_colour2 = b'\n\n\n\xff'
 swamp_colour = b'R\x89\xa7\xff'
 
 left_motor = robot.getMotor("left wheel motor")
@@ -115,10 +118,13 @@ def sendMessage(victimType='T'):
         message = struct.pack('i i c', int(position[0] * 100), int(position[1] * 100), b"U")
     print(struct.unpack('i i c', message))
     emitter.send(message)
-    
+
+def sendEndGame():
+    message = struct.pack('i i c', 0, 0, b'E')
+    emitter.send(message)
 
 def update_sensors():
-    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr, prevAngle, leftheat, rightheat, posX, posZ, colorvalue
+    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr, prevAngle, leftheat, rightheat, posX, posZ, colorval
     #print("Gyro", gyro.getValues()[0])
     curr = gyro.getValues()[0]
     angle = angle+((timestep / 1000.0) * (curr+prevAngle)/2)
@@ -170,20 +176,31 @@ def go_forward(x):
     global posLeft, posRight
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
-    left_motor.setVelocity(2)
-    right_motor.setVelocity(2)
+    left_motor.setVelocity(2.0)
+    right_motor.setVelocity(2.0)
     left = left_encoder.getValue()
-    print("Starting, ", (left))
+    # print("Starting, ", (left))
 
     right = right_encoder.getValue()    
     while(robot.step(timestep) != -1 and abs(left-left_motor.getTargetPosition())>=0.005 and abs(right-right_motor.getTargetPosition())>=0.005):
         update_sensors()
         right_motor.setVelocity(left_motor.getVelocity())
-        if(colorval == hole_colour): # or color == swamp_colour
+        #print("Binary colorval:", colorval)
+        img = np.array(np.frombuffer(colorval, np.uint8).reshape((color.getHeight(), color.getWidth(), 4)))
+        img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
+        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[int(color.getHeight()/2)][int(color.getWidth()/2)]
+        #hsv = cv2.cvtColor( cv2.cvtColor(img, cv2.COLOR_RGB2HSV),  cv2.COLOR_HSV2RGB)[0][0]
+        #print("HSV : ", hsv)
+        #print("RGB colorval : ", colorval)
+
+        
+        if(colorval == hole_colour or colorval == hole_colour2): # or color == swamp_colour
             print("SAW HOLE!")
+            print("Blacking out")
             AI.blackout()
             go_backwards(abs(left-left_motor.getTargetPosition())-x)
             return False
+        
         #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
         #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
         left = left_encoder.getValue()
@@ -201,7 +218,7 @@ def go_backwards(x):
     left_motor.setVelocity(-2)
     right_motor.setVelocity(-2)
     left = left_encoder.getValue()
-    print("Starting, ", (left))
+    # print("Starting, ", (left))
     right = right_encoder.getValue()    
     while(robot.step(timestep) != -1 and abs(left-left_motor.getTargetPosition())>=0.005 and abs(right-right_motor.getTargetPosition())>=0.005):
         update_sensors()
@@ -285,7 +302,8 @@ def goTile(dir):
         print("Pos", pos)
     turn(pos)
     x = go_forward(6.0)
-    if x:
+    
+    if(not x):
         print("SAW Hole")
         return False
     else:
@@ -361,8 +379,9 @@ def goTileWithVictim(dir):
         stop()
     
     x = go_forward(6.0)
-    if(x):
-        print("Hole")
+    
+    if(not x):
+        print("SAW Hole")
         return False
     
     else:
@@ -372,13 +391,15 @@ def goTileWithVictim(dir):
 
 
 #go_forward(5.85)
-print(left_heat_sensor.getValue())
-print(right_heat_sensor.getValue())
+#print(left_heat_sensor.getValue())
+#print(right_heat_sensor.getValue())
 pos = 0
 
 # Task main()
 while robot.step(timestep) != -1:
     update_sensors()
+    print("Left", left)
+    print("Right", right)
     if(frontl <= 0.1 and frontr<=0.1):
         print("Wall in front")
         AI.markWall(AI.direction)
@@ -395,6 +416,9 @@ while robot.step(timestep) != -1:
     successful = False
     while not successful:
         commands = AI.calculate() # Get commands
+        if len(commands)==0:
+            print('FINISHED MAZE!')
+            sendEndGame()
         if(len(commands)>1):
             for command in commands:
                 successful = goTile(command)
