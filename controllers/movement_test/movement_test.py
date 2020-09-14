@@ -39,6 +39,7 @@ rightheat = 0
 colorval = ""
 posX = 0
 posZ = 0
+optimalFrontDistance = 0.04 # For front callibration
 
 hole_colour = b'\x1e\x1e\x1e\xff'
 swamp_colour = b'R\x89\xa7\xff'
@@ -90,27 +91,13 @@ color.enable(timestep)
 emitter = robot.getEmitter("emitter")
 
 #Sending Message for Emitter
-'''
-def sendMessage(v1, v2, victimType):
-    message = struct.pack('i i c', v1, v2, victimType.encode())
-    print("Sending message", message)
-    emitter.send(message)
 
-def sendVictimMessage(victimType='N'):
-    global posX, posY
-    pos = gps.getValues()
-    posX = pos[0]
-    posY = pos[2]
-
-        #robot type, position x cm, position z cm, victim type
-        # The victim type is hardcoded as "H", but this should be changed to different victims for your program
-        # Harmed = "H"
-        # Stable = "S"  
-        # Unharmed = "U"
-        # Heated (Temperature) = "T"
-    sendMessage(int(posX * 100), int(posY * 100), victimType)
-'''
-
+#robot type, position x cm, position z cm, victim type
+# The victim type is hardcoded as "H", but this should be changed to different victims for your program
+# Harmed = "H"
+# Stable = "S"  
+# Unharmed = "U"
+# Heated (Temperature) = "T"
 def sendMessage(victimType='T'):
     position = gps.getValues()
     #robot type, position x cm, position z cm, victim type
@@ -131,7 +118,7 @@ def sendMessage(victimType='T'):
     
 
 def update_sensors():
-    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr, prevAngle, leftheat, rightheat, posX, posZ
+    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr, prevAngle, leftheat, rightheat, posX, posZ, colorvalue
     #print("Gyro", gyro.getValues()[0])
     curr = gyro.getValues()[0]
     angle = angle+((timestep / 1000.0) * (curr+prevAngle)/2)
@@ -160,6 +147,7 @@ def update_sensors():
     backr = back_sensor_r.getValue()
     leftheat = left_heat_sensor.getValue()
     rightheat = right_heat_sensor.getValue()
+    colorval = color.getImage()
     posX = gps.getValues()[1]
     posZ = gps.getValues()[2]
 
@@ -191,6 +179,11 @@ def go_forward(x):
     while(robot.step(timestep) != -1 and abs(left-left_motor.getTargetPosition())>=0.005 and abs(right-right_motor.getTargetPosition())>=0.005):
         update_sensors()
         right_motor.setVelocity(left_motor.getVelocity())
+        if(colorval == hole_colour): # or color == swamp_colour
+            print("SAW HOLE!")
+            AI.blackout()
+            go_backwards(abs(left-left_motor.getTargetPosition())-x)
+            return False
         #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
         #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
         left = left_encoder.getValue()
@@ -198,7 +191,32 @@ def go_forward(x):
     left_motor.setVelocity(0)
     right_motor.setVelocity(0)
     update_sensors()
-    print("Done going forward")
+    return True
+    # print("Done going forward")
+    
+def go_backwards(x):
+    global posLeft, posRight
+    left_motor.setPosition(posLeft+x)
+    right_motor.setPosition(posRight+x)
+    left_motor.setVelocity(-2)
+    right_motor.setVelocity(-2)
+    left = left_encoder.getValue()
+    print("Starting, ", (left))
+    right = right_encoder.getValue()    
+    while(robot.step(timestep) != -1 and abs(left-left_motor.getTargetPosition())>=0.005 and abs(right-right_motor.getTargetPosition())>=0.005):
+        update_sensors()
+        right_motor.setVelocity(left_motor.getVelocity())
+        
+        #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
+        #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
+        left = left_encoder.getValue()
+        right = right_encoder.getValue()
+        
+    left_motor.setVelocity(0)
+    right_motor.setVelocity(0)
+    update_sensors()
+    
+    print("Done going backwards")
     
 def turn(deg):
     global posLeft, posRight, newangle
@@ -266,7 +284,14 @@ def goTile(dir):
         
         print("Pos", pos)
     turn(pos)
-    go_forward(6.0)
+    x = go_forward(6.0)
+    if x:
+        print("SAW Hole")
+        return False
+    else:
+        print("No Hole")
+        #go_forward(3.25)
+        return True
     
 def goTileWithVictim(dir):
     global pos
@@ -309,7 +334,6 @@ def goTileWithVictim(dir):
         left_motor.setPosition(float("inf"))
         right_motor.setPosition(float("inf"))
         calcfront = 0.95510271724 * frontl
-        optimalFrontDistance = 0.04
         while(robot.step(timestep) != -1 and calcfront>optimalFrontDistance):
             update_sensors()
             left_motor.setVelocity(0.5)
@@ -336,7 +360,16 @@ def goTileWithVictim(dir):
         sendMessage('T')
         stop()
     
-    go_forward(6.0)
+    x = go_forward(6.0)
+    if(x):
+        print("Hole")
+        return False
+    
+    else:
+        print("No Hole")
+        #go_forward(3.25)
+        return True
+
 
 #go_forward(5.85)
 print(left_heat_sensor.getValue())
@@ -346,7 +379,6 @@ pos = 0
 # Task main()
 while robot.step(timestep) != -1:
     update_sensors()
-    sendMessage('T')
     if(frontl <= 0.1 and frontr<=0.1):
         print("Wall in front")
         AI.markWall(AI.direction)
@@ -359,14 +391,16 @@ while robot.step(timestep) != -1:
     if(left <= 0.1):
         print("Wall to left")
         AI.markWall((3 + AI.direction) % 4)
-   
-    commands = AI.calculate() # Get commands
-    if(len(commands)>1):
-        for command in commands:
-           goTile(command)
-           update_sensors()
-    else:
-        goTileWithVictim(commands[0])
+
+    successful = False
+    while not successful:
+        commands = AI.calculate() # Get commands
+        if(len(commands)>1):
+            for command in commands:
+                successful = goTile(command)
+                update_sensors()
+        else:
+            successful = goTileWithVictim(commands[0])
 
 
     # Only write to file once commands are successfully executed

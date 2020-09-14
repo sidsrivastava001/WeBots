@@ -263,6 +263,14 @@ class Nav:
         print()
         return commands
 
+    def blackout(self):
+        self.field[self.location[0]][self.location[1]].blackout()
+        self.markVisited(writeToFile=True)
+        for i in range(0, 4):
+            self.markWall(i, writeToFile=True)
+        self.location = self.previousLocation
+
+
     # Finds the path to the nearest unvisited tile via BFS
     # @return Returns the set of commands to reach the new location, the new location's coordinates, and the new direction. Does NOT update location & direction for you
     def backtrackBFS(self):
@@ -302,6 +310,8 @@ class Nav:
             newPosition = prevCell[newPosition[0]][newPosition[1]]
             locations.append(newPosition)
         locations.reverse()
+
+        self.location = tuple(locations[len(locations)-2])
 
         # With each tile's coordinates on the path, we can now calculate the commands
         commands = list()
