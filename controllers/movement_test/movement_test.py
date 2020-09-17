@@ -14,7 +14,7 @@ def clearFile():
         print("Clearing file!")
         filePtr = open('wall.txt', 'w+')
         filePtr.truncate(0)
-        filePtr.write('10 10 V\n')
+        filePtr.write('20 20 V\n')
         filePtr.close()
 
 clearFile()
@@ -46,6 +46,7 @@ optimalFrontDistance = 0.04 # For front callibration
 hole_colour = b'\x1e\x1e\x1e\xff'
 hole_colour2 = b'\n\n\n\xff'
 swamp_colour = b'R\x89\xa7\xff'
+swamp_colour2 = b'R\x89\xa6\xff'
 
 left_motor = robot.getMotor("left wheel motor")
 right_motor = robot.getMotor("right wheel motor")
@@ -70,6 +71,9 @@ back_sensor_r = robot.getDistanceSensor("ps4")
 
 color = robot.getCamera("colour_sensor")
 
+cam = robot.getCamera("camera_centre")
+
+
 
 # get the time step of the current world.
 timestep = int(robot.getBasicTimeStep())
@@ -89,6 +93,7 @@ right_sensor.enable(timestep)
 back_sensor_l.enable(timestep)
 back_sensor_r.enable(timestep)
 color.enable(timestep)
+
 
 #Emitter Stuff:
 emitter = robot.getEmitter("emitter")
@@ -176,8 +181,8 @@ def go_forward(x):
     global posLeft, posRight
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
-    left_motor.setVelocity(2.0)
-    right_motor.setVelocity(2.0)
+    left_motor.setVelocity(4.0)
+    right_motor.setVelocity(4.0)
     left = left_encoder.getValue()
     # print("Starting, ", (left))
 
@@ -188,12 +193,16 @@ def go_forward(x):
         #print("Binary colorval:", colorval)
         img = np.array(np.frombuffer(colorval, np.uint8).reshape((color.getHeight(), color.getWidth(), 4)))
         img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
-        hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[int(color.getHeight()/2)][int(color.getWidth()/2)]
+        #hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[int(color.getHeight()/2)][int(color.getWidth()/2)]
         #hsv = cv2.cvtColor( cv2.cvtColor(img, cv2.COLOR_RGB2HSV),  cv2.COLOR_HSV2RGB)[0][0]
         #print("HSV : ", hsv)
         #print("RGB colorval : ", colorval)
+        #print("Max velocity", left_motor.getMaxVelocity(), right_motor.getMaxVelocity())
+        if(left_motor.getMaxVelocity()<6.28 and right_motor.getMaxVelocity()<6.28): # or color == swamp_colour
+            print("SAW Swamp!")
+            left_motor.setVelocity(2.0)
+            right_motor.setVelocity(2.0)
 
-        
         if(colorval == hole_colour or colorval == hole_colour2): # or color == swamp_colour
             print("SAW HOLE!")
             print("Blacking out")
@@ -419,6 +428,7 @@ while robot.step(timestep) != -1:
         if len(commands)==0:
             print('FINISHED MAZE!')
             sendEndGame()
+            exit(0)
         if(len(commands)>1):
             for command in commands:
                 successful = goTile(command)

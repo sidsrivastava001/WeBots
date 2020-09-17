@@ -17,8 +17,8 @@ class Nav:
     def __init__(self):
         print("Initialized AI!")
         # 2D array
-        self.initialPosition = (10, 10)
-        self.rows, self.cols = (20, 20)
+        self.initialPosition = (20, 20)
+        self.rows, self.cols = (40, 40)
         #self.field = [[cell()]*self.cols]*self.rows
         self.field = [[cell() for j in range(self.cols)]
                       for i in range(self.rows)]
@@ -246,13 +246,13 @@ class Nav:
         if not foundMove:  # Need to BFS
             commands, newLocation, newDirection = self.backtrackBFS()
 
-        if commands == None: # Visited all possible tiles
+        if len(commands) == 0: # Visited all possible tiles
             print("!!!GOING BACK HOME!!!")
             commands, newLocation, newDirection = self.backtrackHomeBFS() # Then backtrack home
             if len(commands)==0:
                 print("Already at home. Finishing program!")
                 #Send Signal
-                exit(0)
+                return []
 
         self.direction = newDirection  # Update Direction
         self.previousLocation = self.location  # Update previous location
@@ -301,7 +301,7 @@ class Nav:
                         pass
 
         if targetLocation == None:  # No more unvisited tiles
-            return None  # return none to indicate go back home
+            return [], (-10000, -10000), -1  # return none to indicate go back home
 
         # Now it's time to backtrack each location! One by One!
         locations = [targetLocation]
@@ -331,6 +331,7 @@ class Nav:
     # Finds the path to the nearest unvisited tile via BFS
     # @return Returns the set of commands to reach the new location, the new location's coordinates, and the new direction. Does NOT update location & direction for you
     def backtrackHomeBFS(self):
+        print("Home:", self.initialPosition)
         if self.location == self.initialPosition:
             return [], self.initialPosition, self.direction
         print("BFS Home Initiated!")
