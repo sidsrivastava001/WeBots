@@ -93,7 +93,7 @@ right_sensor.enable(timestep)
 back_sensor_l.enable(timestep)
 back_sensor_r.enable(timestep)
 color.enable(timestep)
-
+cam.enable(timestep)
 
 #Emitter Stuff:
 emitter = robot.getEmitter("emitter")
@@ -181,8 +181,8 @@ def go_forward(x):
     global posLeft, posRight
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
-    left_motor.setVelocity(4.0)
-    right_motor.setVelocity(4.0)
+    left_motor.setVelocity(5.0)
+    right_motor.setVelocity(5.0)
     left = left_encoder.getValue()
     # print("Starting, ", (left))
 
@@ -203,7 +203,7 @@ def go_forward(x):
             left_motor.setVelocity(2.0)
             right_motor.setVelocity(2.0)
 
-        if(colorval == hole_colour or colorval == hole_colour2): # or color == swamp_colour
+        if(colorval[0]<35 and colorval[1]<35 and colorval[2]<35): # or color == swamp_colour
             print("SAW HOLE!")
             print("Blacking out")
             AI.blackout()
@@ -309,6 +309,28 @@ def goTile(dir):
             pos = pos+360
         
         print("Pos", pos)
+    if(frontl<=0.1 and frontr<=0.1):
+        left_motor.setPosition(float("inf"))
+        right_motor.setPosition(float("inf"))
+        calcfront = 0.95510271724 * frontl
+        while(robot.step(timestep) != -1 and calcfront>optimalFrontDistance):
+            update_sensors()
+            left_motor.setVelocity(1.0)
+            right_motor.setVelocity(1.0)
+            print("Calc", calcfront)
+            calcfront = 0.95510271724 * frontl
+        left_motor.setVelocity(0)
+        right_motor.setVelocity(0)
+        update_sensors()
+        while(robot.step(timestep) != -1 and calcfront<optimalFrontDistance):
+            update_sensors()
+            left_motor.setVelocity(-1.0)
+            right_motor.setVelocity(-1.0)
+            print("Calc", calcfront)
+            calcfront = 0.95510271724 * frontl
+        left_motor.setVelocity(0)
+        right_motor.setVelocity(0)
+        update_sensors()
     turn(pos)
     x = go_forward(6.0)
     
