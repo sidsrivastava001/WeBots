@@ -4,6 +4,8 @@
 #  from controller import Robot, Motor, DistanceSensor
 from controller import Robot
 from nav import Nav
+from HSUDetector import *
+from HSURotateDetection import *
 import math
 import struct
 import time
@@ -40,6 +42,7 @@ leftheat = 0
 rightheat = 0
 colorval = ""
 posX = 0
+posY = 0
 posZ = 0
 optimalFrontDistance = 0.04 # For front callibration
 
@@ -72,6 +75,8 @@ back_sensor_r = robot.getDistanceSensor("ps4")
 color = robot.getCamera("colour_sensor")
 
 cam = robot.getCamera("camera_centre")
+cam_right = robot.getCamera("camera_right")
+cam_left = robot.getCamera("camera_left")
 
 
 
@@ -94,6 +99,8 @@ back_sensor_l.enable(timestep)
 back_sensor_r.enable(timestep)
 color.enable(timestep)
 cam.enable(timestep)
+cam_left.enable(timestep)
+cam_right.enable(timestep)
 
 #Emitter Stuff:
 emitter = robot.getEmitter("emitter")
@@ -129,7 +136,7 @@ def sendEndGame():
     emitter.send(message)
 
 def update_sensors():
-    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr, prevAngle, leftheat, rightheat, posX, posZ, colorval
+    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr, prevAngle, leftheat, rightheat, posX, posY, posZ, colorval
     #print("Gyro", gyro.getValues()[0])
     curr = gyro.getValues()[0]
     angle = angle+((timestep / 1000.0) * (curr+prevAngle)/2)
@@ -159,10 +166,17 @@ def update_sensors():
     leftheat = left_heat_sensor.getValue()
     rightheat = right_heat_sensor.getValue()
     colorval = color.getImage()
-    posX = gps.getValues()[1]
+    posX = gps.getValues()[0]
+    posY = gps.getValues()[1]
     posZ = gps.getValues()[2]
 
-    #print("Updated", posX, posZ)
+    #IMAGE STUFF:
+    img = cam.getImage()
+    cam.saveImage("vision.png", 100)
+    img = cv2.imread("vision.png")
+    testThreshold(img)
+
+    
 # You should insert a getDevice-like function in order to get the
 # instance of a device of the robot. Something like:
 #  motor = robot.getMotor('motorname')
@@ -253,7 +267,7 @@ def turn(deg):
     error = 0
     totalerror = 0
     i = 0
-    while(robot.step(timestep) != -1 and (abs(error)>0.3 or i==0)):
+    while(robot.step(timestep) != -1 and (abs(error)>0.4 or i==0)):
         error = deg-newangle
         
         if(error > 180):
@@ -429,6 +443,7 @@ pos = 0
 # Task main()
 while robot.step(timestep) != -1:
     update_sensors()
+    print("Current position: X:", posX, "Y:", posY, "Z:", posZ)
     print("Left", left)
     print("Right", right)
     if(frontl <= 0.1 and frontr<=0.1):
@@ -444,6 +459,7 @@ while robot.step(timestep) != -1:
         print("Wall to left")
         AI.markWall((3 + AI.direction) % 4)
 
+    
     successful = False
     while not successful:
         commands = AI.calculate() # Get commands
