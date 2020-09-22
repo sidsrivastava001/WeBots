@@ -34,8 +34,8 @@ def testThreshold(img):
     contours, h = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     cv2.imwrite("unthresholded.png", gray) 
     #cv2.drawContours(gray, contours, -1, (0, 255, 0), 1)
-    cv2.drawContours(gray, contours, -1, (150, 155, 155), 1)
-    cv2.imwrite("thresholded.png", gray) 
+    cv2.drawContours(thresh, contours, -1, (150, 155, 155), 1)
+    cv2.imwrite("thresholded.png", thresh) 
         
 
 def RotateImage(i,angle, scale, border_mode=cv2.BORDER_CONSTANT):

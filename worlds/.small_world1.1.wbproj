@@ -10,6 +10,6 @@ orthographicViewHeight: 1
 textFiles: -1
 robotWindow: robot
 renderingDevicePerspectives: e-puck 0:camera_centre;1;1;0;0
+renderingDevicePerspectives: e-puck 0:camera_right;1;1;0;0
 renderingDevicePerspectives: e-puck 0:colour_sensor;1;32;0;0
 renderingDevicePerspectives: e-puck 0:camera_left;1;1;0;0
-renderingDevicePerspectives: e-puck 0:camera_right;1;1;0;0
