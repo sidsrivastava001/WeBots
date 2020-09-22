@@ -1,0 +1,14 @@
+Please install the following packages:
+- Numpy
+- cv2
+
+Program was ran on Python 3.7.4. The controller is "movement_test.py" (run this file). Make sure "nav.py" is in the same folder as "movement_test.py"
+A file called "wall.txt" will be generated. The file size will be nominal (<2KB). Please do not delete that file until the end of the run.
+
+Current Features:
+1) Successful BFS & Navigation + backtrack home
+2) Some self-correction (turning and going forward should be accurate)
+3) Black tile avoidance
+4) Heat victim detection
+
+Expected number of points earned in run: 70-90

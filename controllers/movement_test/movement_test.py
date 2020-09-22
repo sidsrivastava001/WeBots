@@ -1,4 +1,4 @@
-"""movement_test controller."""
+"""robot0Controller controller."""
 
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
@@ -6,6 +6,7 @@ from controller import Robot
 from nav import Nav
 from HSUDetector import *
 from HSURotateDetection import *
+from visualVictim import *
 import math
 import struct
 import time
@@ -22,6 +23,7 @@ def clearFile():
 clearFile()
 # Initialize the AI Navigator
 AI = Nav()
+Visual = visual()
 
 # create the Robot instance.
 robot = Robot()
@@ -45,6 +47,8 @@ posX = 0
 posY = 0
 posZ = 0
 optimalFrontDistance = 0.04 # For front callibration
+blackThresh = 80
+letterCenter = "None"
 
 hole_colour = b'\x1e\x1e\x1e\xff'
 hole_colour2 = b'\n\n\n\xff'
@@ -169,12 +173,7 @@ def update_sensors():
     posX = gps.getValues()[0]
     posY = gps.getValues()[1]
     posZ = gps.getValues()[2]
-
-    #IMAGE STUFF:
-    img = cam.getImage()
-    cam.saveImage("vision.png", 100)
-    img = cv2.imread("vision.png")
-    testThreshold(img)
+    #print("Color", colorval[0], colorval[1], colorval[2])
 
     
 # You should insert a getDevice-like function in order to get the
@@ -192,7 +191,7 @@ def stop():
      # Sleep for 3 seconds
 
 def go_forward(x):
-    global posLeft, posRight
+    global posLeft, posRight, letterCenter
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
     left_motor.setVelocity(5.0)
@@ -217,12 +216,15 @@ def go_forward(x):
             left_motor.setVelocity(2.0)
             right_motor.setVelocity(2.0)
 
-        if(colorval[0]<35 and colorval[1]<35 and colorval[2]<35): # or color == swamp_colour
+        if(colorval[0]<blackThresh and colorval[1]<blackThresh and colorval[2]<blackThresh): # or color == swamp_colour
             print("SAW HOLE!")
             print("Blacking out")
             AI.blackout()
             go_backwards(abs(left-left_motor.getTargetPosition())-x)
             return False
+        # if(letterCenter == "None"):
+        #    letterCenter = Visual.getLetter()
+        #    print("Letter Saw:", letterCenter)
         
         #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
         #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
@@ -448,6 +450,10 @@ while robot.step(timestep) != -1:
     print("Right", right)
     if(frontl <= 0.1 and frontr<=0.1):
         print("Wall in front")
+        if letterCenter != "None":
+            print("Reporting Victim!")
+            stop()
+            sendMessage(victimType=letterCenter)
         AI.markWall(AI.direction)
     if(right <= 0.1):
         print("Wall to right")
@@ -459,6 +465,20 @@ while robot.step(timestep) != -1:
         print("Wall to left")
         AI.markWall((3 + AI.direction) % 4)
 
+    #IMAGE STUFF:
+    imgCenter = cam.getImage()
+    imgLeft = cam_left.getImage()
+    imgRight = cam_right.getImage()
+    cam.saveImage("visionCenter.png", 100)
+    cam_left.saveImage("visionLeft.png", 100)
+    cam_right.saveImage("visionRight.png", 100)
+
+    img = cv2.imread("visionCenter.png")
+    testThreshold(img)    
+    
+    # letterRight = Visual.getLetter()
+    # letterLeft = Visual.getLetter()
+        
     
     successful = False
     while not successful:
