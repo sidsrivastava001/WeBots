@@ -12,6 +12,7 @@ import struct
 import time
 import cv2
 import numpy as np
+import pytesseract
 
 def clearFile():
         print("Clearing file!")
@@ -48,7 +49,8 @@ posY = 0
 posZ = 0
 optimalFrontDistance = 0.04 # For front callibration
 blackThresh = 80
-letterCenter = "None"
+letters = {"Left": "None", "Center" : "None", "Right" : "None"}
+imgarr = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
 
 hole_colour = b'\x1e\x1e\x1e\xff'
 hole_colour2 = b'\n\n\n\xff'
@@ -175,7 +177,61 @@ def update_sensors():
     posZ = gps.getValues()[2]
     #print("Color", colorval[0], colorval[1], colorval[2])
 
-    
+def getLetters():
+    letters = ["None", "None", "None"]
+
+    # imgLeft = cam_left.getImage()
+    # imgRight = cam_right.getImage()
+
+    custom_config = r'--oem 3 --psm 10'
+    u = 0
+    for imgList in imgarr:
+        for camNum in range(0,3):
+            img = np.array(np.frombuffer(imgList[camNum], np.uint8).reshape((cam.getHeight(), cam.getWidth(), 4)))
+            img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
+            #cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            
+            thresh = cv2.threshold(gray, 140, 255, cv2.THRESH_BINARY)[1]
+            # draw all contours in green and accepted ones in red
+            contours, h = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            #cv2.imwrite("unthresholded.png", gray)
+            cv2.drawContours(img, contours, -1, (0, 255, 0), 1)
+            #cv2.imwrite(str(u)+" "+str(camNum)+".png", img)
+            #cv2.drawContours(gray, contours, -1, (150, 155, 155),1)
+            #cv2.imwrite("thresholded.png", gray)
+            for i, c in enumerate(contours):
+                rect = cv2.boundingRect(c)
+                x,y,w,h = rect
+                box = cv2.rectangle(img, (x,y), (x+w,y+h), (0,0,255), 2)
+                cropped = img[y: y+h, x: x+w]
+                text = pytesseract.image_to_string(cropped, config=custom_config)
+                print("TEXT", text)
+                if("S" in text or "s" in text):
+                    letters[camNum] = "S"
+                    break
+                elif("H" in text):
+                    letters[camNum] = "H"
+                    break
+                elif("U" in text):
+                    letters[camNum] = "U"
+                    break
+            u+=1
+    print(letters)
+    #print("Shape:",img.shape())
+    #print(img)
+    #letterCenter = Visual.getLetter(gray)
+    # letterLeft = Visual.getLetter(imgLeft)
+    # letterRight = Visual.getLetter(imgRight)
+    return {"Left": letters[1], "Center" : letters[0], "Right" : letters[2]}
+
+def clearVictims():
+    global letters
+    letters["Left"] = "None"
+    letters["Right"] = "None"
+    letters["Center"] = "None"
+
 # You should insert a getDevice-like function in order to get the
 # instance of a device of the robot. Something like:
 #  motor = robot.getMotor('motorname')
@@ -191,7 +247,10 @@ def stop():
      # Sleep for 3 seconds
 
 def go_forward(x):
-    global posLeft, posRight, letterCenter
+    global posLeft, posRight, letterCenter, imgarr
+    imgarr[0][0] = cam.getImage()
+    imgarr[0][1] = cam_left.getImage()
+    imgarr[0][2] = cam_right.getImage()
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
     left_motor.setVelocity(5.0)
@@ -204,6 +263,14 @@ def go_forward(x):
         update_sensors()
         right_motor.setVelocity(left_motor.getVelocity())
         #print("Binary colorval:", colorval)
+        if(abs(left-(left_motor.getTargetPosition()/3))<=0.01):
+            imgarr[1][0] = cam.getImage()
+            imgarr[1][1] = cam_left.getImage()
+            imgarr[1][2] = cam_right.getImage()
+        if(abs(left-(left_motor.getTargetPosition()*2/3))<=0.01):
+            imgarr[2][0] = cam.getImage()
+            imgarr[2][1] = cam_left.getImage()
+            imgarr[2][2] = cam_right.getImage()
         img = np.array(np.frombuffer(colorval, np.uint8).reshape((color.getHeight(), color.getWidth(), 4)))
         img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
         #hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[int(color.getHeight()/2)][int(color.getWidth()/2)]
@@ -212,7 +279,7 @@ def go_forward(x):
         #print("RGB colorval : ", colorval)
         #print("Max velocity", left_motor.getMaxVelocity(), right_motor.getMaxVelocity())
         if(left_motor.getMaxVelocity()<6.28 and right_motor.getMaxVelocity()<6.28): # or color == swamp_colour
-            print("SAW Swamp!")
+            #print("SAW Swamp!")
             left_motor.setVelocity(2.0)
             right_motor.setVelocity(2.0)
 
@@ -296,35 +363,6 @@ def turn(deg):
 # - perform simulation steps until Webots is stopping the controller
 def goTile(dir):
     global pos
-    if(dir == AI.convertCommand(1)):
-
-        pos =(-90+pos)%360
-    
-        if(pos>180):
-            pos = pos-360
-        if(pos<-180):
-            pos = pos+360       
-        print("Pos", pos)
-    if(dir == AI.convertCommand(3)):
-        
-        pos =(90+pos)%360
-    
-        if(pos>180):
-            pos = pos-360
-        if(pos<-180):
-            pos = pos+360
-        
-        print("Pos", pos)
-    if(dir == AI.convertCommand(2)):
-        
-        pos =(180+pos)%360
-    
-        if(pos>180):
-            pos = pos-360
-        if(pos<-180):
-            pos = pos+360
-        
-        print("Pos", pos)
     if(frontl<=0.1 and frontr<=0.1):
         left_motor.setPosition(float("inf"))
         right_motor.setPosition(float("inf"))
@@ -347,21 +385,11 @@ def goTile(dir):
         left_motor.setVelocity(0)
         right_motor.setVelocity(0)
         update_sensors()
-    turn(pos)
-    x = go_forward(6.0)
-    
-    if(not x):
-        print("SAW Hole")
-        return False
-    else:
-        print("No Hole")
-        #go_forward(3.25)
-        return True
-    
-def goTileWithVictim(dir):
-    global pos
     victim = 0
+    print("LEFT HEAT", leftheat)
+    print("RIGHT HEAT", rightheat)
     if(leftheat>30 or rightheat>30):
+        
         print("SEE VICTIM")
         sendMessage('T')
         stop()
@@ -373,9 +401,10 @@ def goTileWithVictim(dir):
         if(pos>180):
             pos = pos-360
         if(pos<-180):
-            pos = pos+360       
+            pos = pos+360
+        turn(pos)      
         print("Pos", pos)
-    if(dir == AI.convertCommand(3)):
+    elif(dir == AI.convertCommand(3)):
         
         pos =(90+pos)%360
     
@@ -383,26 +412,57 @@ def goTileWithVictim(dir):
             pos = pos-360
         if(pos<-180):
             pos = pos+360
-        
+        turn(pos)
         print("Pos", pos)
-    if(dir == AI.convertCommand(2)):
+    elif(dir == AI.convertCommand(2)):
         
-        pos =(180+pos)%360
+        pos =(90+pos)%360
     
         if(pos>180):
             pos = pos-360
         if(pos<-180):
             pos = pos+360
-        
+        turn(pos)
+        print("LEFT HEAT", leftheat)
+        print("RIGHT HEAT", rightheat)
+        if((leftheat>30 or rightheat>30) and victim != 1):
+            print("SEE VICTIM")
+            sendMessage('T')
+            stop()
+        pos =(90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        turn(pos)
         print("Pos", pos)
+    
+    print("LEFT HEAT", leftheat)
+    print("RIGHT HEAT", rightheat)
+    if((leftheat>30 or rightheat>30) and victim != 1):
+        print("SEE VICTIM")
+        sendMessage('T')
+        stop()
+    x = go_forward(6.0)
+    
+    if(not x):
+        print("SAW Hole")
+        return False
+    else:
+        print("No Hole")
+        #go_forward(3.25)
+        return True
+    
+def goTileWithVictim(dir):
     if(frontl<=0.1 and frontr<=0.1):
         left_motor.setPosition(float("inf"))
         right_motor.setPosition(float("inf"))
         calcfront = 0.95510271724 * frontl
         while(robot.step(timestep) != -1 and calcfront>optimalFrontDistance):
             update_sensors()
-            left_motor.setVelocity(0.5)
-            right_motor.setVelocity(0.5)
+            left_motor.setVelocity(1.0)
+            right_motor.setVelocity(1.0)
             print("Calc", calcfront)
             calcfront = 0.95510271724 * frontl
         left_motor.setVelocity(0)
@@ -410,31 +470,87 @@ def goTileWithVictim(dir):
         update_sensors()
         while(robot.step(timestep) != -1 and calcfront<optimalFrontDistance):
             update_sensors()
-            left_motor.setVelocity(-0.5)
-            right_motor.setVelocity(-0.5)
+            left_motor.setVelocity(-1.0)
+            right_motor.setVelocity(-1.0)
             print("Calc", calcfront)
             calcfront = 0.95510271724 * frontl
         left_motor.setVelocity(0)
         right_motor.setVelocity(0)
         update_sensors()
-    turn(pos)
+    global pos, letters
+    victim = 0
+    print("LEFT HEAT", leftheat)
+    print("RIGHT HEAT", rightheat)
+    if(leftheat>30 or rightheat>30):
+        
+        print("SEE VICTIM")
+        sendMessage('T')
+        stop()
+        victim = 1
+    if(dir == AI.convertCommand(1)):
+
+        pos =(-90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        turn(pos)      
+        print("Pos", pos)
+    elif(dir == AI.convertCommand(3)):
+        
+        pos =(90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        turn(pos)
+        print("Pos", pos)
+    elif(dir == AI.convertCommand(2)):
+        
+        pos =(90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        turn(pos)
+        print("LEFT HEAT", leftheat)
+        print("RIGHT HEAT", rightheat)
+        if((leftheat>30 or rightheat>30) and victim != 1):
+            print("SEE VICTIM")
+            sendMessage('T')
+            stop()
+        pos =(90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        turn(pos)
+        print("Pos", pos)
+
 
     # HEAT VICTIM DETECTION
+    print("LEFT HEAT", leftheat)
+    print("RIGHT HEAT", rightheat)
     if((leftheat>30 or rightheat>30) and victim != 1):
         print("SEE VICTIM")
         sendMessage('T')
         stop()
     
+    print("Go Forward")
     x = go_forward(6.0)
-    
     if(not x):
         print("SAW Hole")
         return False
     
     else:
         print("No Hole")
-        #go_forward(3.25)
         return True
+        #go_forward(3.25)
+
 
 
 #go_forward(5.85)
@@ -443,38 +559,55 @@ def goTileWithVictim(dir):
 pos = 0
 
 # Task main()
+i = 0
 while robot.step(timestep) != -1:
     update_sensors()
+    if(i != 0):
+        letters = getLetters()
+        print("LETTERS", letters)
+    i+=1
     print("Current position: X:", posX, "Y:", posY, "Z:", posZ)
     print("Left", left)
     print("Right", right)
-    if(frontl <= 0.1 and frontr<=0.1):
+    if(frontl <= 0.12 and frontr<=0.12):
         print("Wall in front")
-        if letterCenter != "None":
-            print("Reporting Victim!")
+        if letters["Center"] != "None":
+            print("Reporting Victim Center!")
             stop()
-            sendMessage(victimType=letterCenter)
+            sendMessage(victimType=letters["Center"])
+            clearVictims()
         AI.markWall(AI.direction)
-    if(right <= 0.1):
+    if(right <= 0.12):
         print("Wall to right")
+        if letters["Right"] != "None":
+            print("Reporting Victim Right!")
+            stop()
+            sendMessage(victimType=letters["Right"])
+            clearVictims()
         AI.markWall((1 + AI.direction) % 4)
-    if(backl <= 0.1 and backr <= 0.1):
+    if(backl <= 0.12 and backr <= 0.12):
         print("Wall to back")
         AI.markWall((2 + AI.direction) % 4)
-    if(left <= 0.1):
+    if(left <= 0.12):
         print("Wall to left")
+        if letters["Left"] != "None":
+            print("Reporting Victim Left!")
+            stop()
+            sendMessage(victimType=letters["Left"])
+            clearVictims()
         AI.markWall((3 + AI.direction) % 4)
-
+    clearVictims()
     #IMAGE STUFF:
-    imgCenter = cam.getImage()
+    '''imgCenter = cam.getImage()
     imgLeft = cam_left.getImage()
     imgRight = cam_right.getImage()
-    cam.saveImage("visionCenter.png", 100)
-    cam_left.saveImage("visionLeft.png", 100)
-    cam_right.saveImage("visionRight.png", 100)
+    letterCenter = Visual.getLetter(imgCenter)'''
+    #cam.saveImage("visionCenter.png", 100)
+    #cam_left.saveImage("visionLeft.png", 100)
+    #cam_right.saveImage("visionRight.png", 100)
 
-    img = cv2.imread("visionCenter.png")
-    testThreshold(img)    
+    '''img = cv2.imread("visionCenter.png")
+    testThreshold(img)    '''
     
     # letterRight = Visual.getLetter()
     # letterLeft = Visual.getLetter()
@@ -488,8 +621,11 @@ while robot.step(timestep) != -1:
             sendEndGame()
             exit(0)
         if(len(commands)>1):
-            for command in commands:
-                successful = goTile(command)
+            for i in range(len(commands)):
+                if(i == len(commands)-1):
+                    successful = goTile(commands[i])
+                else:
+                    successful = goTile(commands[i])
                 update_sensors()
         else:
             successful = goTileWithVictim(commands[0])
@@ -497,117 +633,6 @@ while robot.step(timestep) != -1:
 
     # Only write to file once commands are successfully executed
     AI.flush() # Actually write data to file
-
-    """
-    if(frontl > 0.1 and frontr>0.1):
-        goTile('F')
-    elif(right > 0.1):
-        goTile('R')
-    elif(left > 0.1):
-        goTile('L')
-    else:
-        goTile('B')
-    """
-    
-    """
-    goTile('F')
-    goTile('F')
-    goTile('F')
-    print(frontl, frontr, left, right)
-    
-    goTile('R')
-    goTile('F')
-    goTile('L')
-    goTile('F')
-    goTile('R')
-    goTile('F')
-    goTile('R')
-    goTile('R')
-    goTile('L')
-    goTile('F')
-    """
-    """
-    go_forward(5.9)
-    newpos =(-90+pos)%360
-    if(newpos>=180):
-        newpos = newpos-360
-    if(newpos<=-180):
-        newpos = newpos+360
-    print("Pos", newpos)
-    turn(pos, newpos)
-    pos = newpos
-    go_forward(5.9)
-    newpos =(-90+pos)%360
-    if(newpos>=180):
-        newpos = newpos-360
-    if(newpos<=-180):
-        newpos = newpos+360
-    print("Pos", newpos)
-    turn(pos, newpos)
-    pos = newpos
-    go_forward(5.9)
-    newpos =(180+pos)%360
-    if(newpos>=180):
-        newpos = newpos-360
-    if(newpos<=-180):
-        newpos = newpos+360
-    print("Pos", newpos)
-    turn(pos, newpos)
-    pos = newpos
-    go_forward(5.9)
-    newpos =(90+pos)%360
-    if(newpos>=180):
-        newpos = newpos-360
-    if(newpos<=-180):
-        newpos = newpos+360
-    print("Pos", newpos)
-    turn(pos, newpos)
-    pos = newpos
-    go_forward(5.9)
-    newpos =(90+pos)%360
-    if(newpos>=180):
-        newpos = newpos-360
-    if(newpos<=-180):
-        newpos = newpos+360
-    print("Pos", newpos)
-    turn(pos, newpos)
-    pos = newpos
-    go_forward(5.9)
-    newpos =(90+pos)%360
-    if(newpos>=180):
-        newpos = newpos-360
-    if(newpos<=-180):
-        newpos = newpos+360
-    print("Pos", newpos)
-    turn(pos, newpos)
-    pos = newpos
-    go_forward(5.9)
-    """
-    """
-    pos =(180+newangle)%360
-    if(newangle>180):
-        newangle = newangle-360
-    print("Pos", pos)
-    turn(pos)
-    pos =(270+newangle)%360
-    if(newangle>180):
-        newangle = newangle-360
-    print("Pos", pos)
-    turn(pos)
-    """
-    #turn(90)
-
-    #print("Gyro: ", gyro.getValues())
-    #print(left_encoder.getValue())
-    #print(right_encoder.getValue())
-    # Read the sensors:
-    # Enter here functions to read sensor data, like:
-    #  val = ds.getValue()
-
-    # Process sensor data here.
-
-    # Enter here functions to send actuator commands, like:
-    #  motor.setPosition(10.0)
     pass
 
 # Enter here exit cleanup code.
