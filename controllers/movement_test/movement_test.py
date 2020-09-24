@@ -353,6 +353,7 @@ def go_backwards(x):
     
 def turn(deg):
     global posLeft, posRight, newangle
+    clearVictims()
     left_motor.setPosition(float("inf"))
     right_motor.setPosition(float("inf"))
     kP = 0.03
