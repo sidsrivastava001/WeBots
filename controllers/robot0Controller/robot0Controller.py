@@ -24,7 +24,7 @@ def clearFile():
 clearFile()
 # Initialize the AI Navigator
 AI = Nav()
-Visual = visual()
+#Visual = visual()
 
 # create the Robot instance.
 robot = Robot()
@@ -262,7 +262,7 @@ def stop():
      # Sleep for 3 seconds
 
 def go_forward(x):
-    global posLeft, posRight, letterCenter, imgarr
+    global posLeft, posRight
     """
     imgarr[0][1] = cam.getImage()
     imgarr[0][0] = cam_left.getImage()
@@ -387,6 +387,35 @@ def turn(deg):
 # - perform simulation steps until Webots is stopping the controller
 def goTile(dir):
     global pos
+    if(dir == AI.convertCommand(1)):
+
+        pos =(-90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360       
+        print("Pos", pos)
+    if(dir == AI.convertCommand(3)):
+        
+        pos =(90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        
+        print("Pos", pos)
+    if(dir == AI.convertCommand(2)):
+        
+        pos =(180+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        
+        print("Pos", pos)
     if(frontl<=0.1 and frontr<=0.1):
         left_motor.setPosition(float("inf"))
         right_motor.setPosition(float("inf"))
@@ -409,65 +438,7 @@ def goTile(dir):
         left_motor.setVelocity(0)
         right_motor.setVelocity(0)
         update_sensors()
-    victim = 0
-    print("LEFT HEAT", leftheat)
-    print("RIGHT HEAT", rightheat)
-    if(leftheat>28 or rightheat>28):
-        
-        print("SEE VICTIM")
-        sendMessage('T')
-        stop()
-        victim = 1
-    if(dir == AI.convertCommand(1)):
-
-        pos =(-90+pos)%360
-    
-        if(pos>180):
-            pos = pos-360
-        if(pos<-180):
-            pos = pos+360
-        turn(pos)      
-        print("Pos", pos)
-    elif(dir == AI.convertCommand(3)):
-        
-        pos =(90+pos)%360
-    
-        if(pos>180):
-            pos = pos-360
-        if(pos<-180):
-            pos = pos+360
-        turn(pos)
-        print("Pos", pos)
-    elif(dir == AI.convertCommand(2)):
-        
-        pos =(90+pos)%360
-    
-        if(pos>180):
-            pos = pos-360
-        if(pos<-180):
-            pos = pos+360
-        turn(pos)
-        print("LEFT HEAT", leftheat)
-        print("RIGHT HEAT", rightheat)
-        if((leftheat>28 or rightheat>28) and victim != 1):
-            print("SEE VICTIM")
-            sendMessage('T')
-            stop()
-        pos =(90+pos)%360
-    
-        if(pos>180):
-            pos = pos-360
-        if(pos<-180):
-            pos = pos+360
-        turn(pos)
-        print("Pos", pos)
-    
-    print("LEFT HEAT", leftheat)
-    print("RIGHT HEAT", rightheat)
-    if((leftheat>28 or rightheat>28) and victim != 1):
-        print("SEE VICTIM")
-        sendMessage('T')
-        stop()
+    turn(pos)
     x = go_forward(6.0)
     
     if(not x):
@@ -479,34 +450,9 @@ def goTile(dir):
         return True
     
 def goTileWithVictim(dir):
-    if(frontl<=0.1 and frontr<=0.1):
-        left_motor.setPosition(float("inf"))
-        right_motor.setPosition(float("inf"))
-        calcfront = 0.95510271724 * frontl
-        while(robot.step(timestep) != -1 and calcfront>optimalFrontDistance):
-            update_sensors()
-            left_motor.setVelocity(1.0)
-            right_motor.setVelocity(1.0)
-            print("Calc", calcfront)
-            calcfront = 0.95510271724 * frontl
-        left_motor.setVelocity(0)
-        right_motor.setVelocity(0)
-        update_sensors()
-        while(robot.step(timestep) != -1 and calcfront<optimalFrontDistance):
-            update_sensors()
-            left_motor.setVelocity(-1.0)
-            right_motor.setVelocity(-1.0)
-            print("Calc", calcfront)
-            calcfront = 0.95510271724 * frontl
-        left_motor.setVelocity(0)
-        right_motor.setVelocity(0)
-        update_sensors()
-    global pos, letters
+    global pos
     victim = 0
-    print("LEFT HEAT", leftheat)
-    print("RIGHT HEAT", rightheat)
-    if(leftheat>28 or rightheat>28):
-        
+    if(leftheat>30 or rightheat>30):
         print("SEE VICTIM")
         sendMessage('T')
         stop()
@@ -518,10 +464,9 @@ def goTileWithVictim(dir):
         if(pos>180):
             pos = pos-360
         if(pos<-180):
-            pos = pos+360
-        turn(pos)      
+            pos = pos+360       
         print("Pos", pos)
-    elif(dir == AI.convertCommand(3)):
+    if(dir == AI.convertCommand(3)):
         
         pos =(90+pos)%360
     
@@ -529,44 +474,51 @@ def goTileWithVictim(dir):
             pos = pos-360
         if(pos<-180):
             pos = pos+360
-        turn(pos)
-        print("Pos", pos)
-    elif(dir == AI.convertCommand(2)):
         
-        pos =(90+pos)%360
-    
-        if(pos>180):
-            pos = pos-360
-        if(pos<-180):
-            pos = pos+360
-        turn(pos)
-        print("LEFT HEAT", leftheat)
-        print("RIGHT HEAT", rightheat)
-        if((leftheat>30 or rightheat>30) and victim != 1):
-            print("SEE VICTIM")
-            sendMessage('T')
-            stop()
-        pos =(90+pos)%360
-    
-        if(pos>180):
-            pos = pos-360
-        if(pos<-180):
-            pos = pos+360
-        turn(pos)
         print("Pos", pos)
-
+    if(dir == AI.convertCommand(2)):
+        
+        pos =(180+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        
+        print("Pos", pos)
+    if(frontl<=0.1 and frontr<=0.1):
+        left_motor.setPosition(float("inf"))
+        right_motor.setPosition(float("inf"))
+        calcfront = 0.95510271724 * frontl
+        while(robot.step(timestep) != -1 and calcfront>optimalFrontDistance):
+            update_sensors()
+            left_motor.setVelocity(0.5)
+            right_motor.setVelocity(0.5)
+            print("Calc", calcfront)
+            calcfront = 0.95510271724 * frontl
+        left_motor.setVelocity(0)
+        right_motor.setVelocity(0)
+        update_sensors()
+        while(robot.step(timestep) != -1 and calcfront<optimalFrontDistance):
+            update_sensors()
+            left_motor.setVelocity(-0.5)
+            right_motor.setVelocity(-0.5)
+            print("Calc", calcfront)
+            calcfront = 0.95510271724 * frontl
+        left_motor.setVelocity(0)
+        right_motor.setVelocity(0)
+        update_sensors()
+    turn(pos)
 
     # HEAT VICTIM DETECTION
-    print("LEFT HEAT", leftheat)
-    print("RIGHT HEAT", rightheat)
-    if((leftheat>28 or rightheat>28) and victim != 1):
+    if((leftheat>30 or rightheat>30) and victim != 1):
         print("SEE VICTIM")
         sendMessage('T')
         stop()
     
     print("Go Forward")
-    x = go_forward(6.0)
-    """
+    x = go_forward(2.0)
+    
     if(not x):
         print("SAW Hole")
         return False
@@ -579,7 +531,7 @@ def goTileWithVictim(dir):
     imgarr[0][0] = cam_left.getImage()
     imgarr[0][2] = cam_right.getImage()
     x = go_forward(4.0)
-    """
+    
     if(not x):
         print("SAW Hole")
         return False
@@ -601,7 +553,7 @@ i = 0
 while robot.step(timestep) != -1:
     update_sensors()
     if(i != 0):
-        #letters = getLetters()
+        letters = getLetters()
         print("LETTERS", letters)
     i+=1
     print("Current position: X:", posX, "Y:", posY, "Z:", posZ)

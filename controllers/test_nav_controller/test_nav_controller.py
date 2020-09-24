@@ -1,18 +1,14 @@
-"""robot0Controller controller."""
+"""test_nav_controller controller."""
 
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
 from controller import Robot
 from nav import Nav
-from HSUDetector import *
-from HSURotateDetection import *
-from visualVictim import *
 import math
 import struct
 import time
 import cv2
 import numpy as np
-import pytesseract
 
 def clearFile():
         print("Clearing file!")
@@ -24,7 +20,6 @@ def clearFile():
 clearFile()
 # Initialize the AI Navigator
 AI = Nav()
-#Visual = visual()
 
 # create the Robot instance.
 robot = Robot()
@@ -45,12 +40,8 @@ leftheat = 0
 rightheat = 0
 colorval = ""
 posX = 0
-posY = 0
 posZ = 0
 optimalFrontDistance = 0.04 # For front callibration
-blackThresh = 70
-letters = {"Left": "None", "Center" : "None", "Right" : "None"}
-imgarr = [[0, 0, 0]]
 
 hole_colour = b'\x1e\x1e\x1e\xff'
 hole_colour2 = b'\n\n\n\xff'
@@ -81,8 +72,6 @@ back_sensor_r = robot.getDistanceSensor("ps4")
 color = robot.getCamera("colour_sensor")
 
 cam = robot.getCamera("camera_centre")
-cam_right = robot.getCamera("camera_right")
-cam_left = robot.getCamera("camera_left")
 
 
 
@@ -105,8 +94,6 @@ back_sensor_l.enable(timestep)
 back_sensor_r.enable(timestep)
 color.enable(timestep)
 cam.enable(timestep)
-cam_left.enable(timestep)
-cam_right.enable(timestep)
 
 #Emitter Stuff:
 emitter = robot.getEmitter("emitter")
@@ -142,7 +129,7 @@ def sendEndGame():
     emitter.send(message)
 
 def update_sensors():
-    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr, prevAngle, leftheat, rightheat, posX, posY, posZ, colorval
+    global angle, newangle, posLeft, posRight, frontl, frontr, left, right, backl, backr, prevAngle, leftheat, rightheat, posX, posZ, colorval
     #print("Gyro", gyro.getValues()[0])
     curr = gyro.getValues()[0]
     angle = angle+((timestep / 1000.0) * (curr+prevAngle)/2)
@@ -172,81 +159,10 @@ def update_sensors():
     leftheat = left_heat_sensor.getValue()
     rightheat = right_heat_sensor.getValue()
     colorval = color.getImage()
-    posX = gps.getValues()[0]
-    posY = gps.getValues()[1]
+    posX = gps.getValues()[1]
     posZ = gps.getValues()[2]
-    #print("Color", colorval[0], colorval[1], colorval[2])
 
-def getLetters():
-    letters = ["None", "None", "None"]
-
-    # imgLeft = cam_left.getImage()
-    # imgRight = cam_right.getImage()
-
-    custom_config = r'--oem 3 --psm 10'
-    u = 0
-    for imgList in imgarr:
-        for camNum in range(0,3):
-            img = np.array(np.frombuffer(imgList[camNum], np.uint8).reshape((cam.getHeight(), cam.getWidth(), 4)))
-            img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
-            #cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            
-            thresh = cv2.threshold(gray, 140, 255, cv2.THRESH_BINARY)[1]
-            # draw all contours in green and accepted ones in red
-            contours, h = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            #cv2.imwrite("unthresholded.png", gray)
-            cv2.drawContours(img, contours, -1, (0, 255, 0), 1)
-            if camNum == 0:
-                cv2.imwrite(str(u)+" left.png", img)
-            if camNum == 1:
-                cv2.imwrite(str(u)+" center.png", img)
-            if camNum == 2:
-                cv2.imwrite(str(u)+" right.png", img)
-            #cv2.drawContours(gray, contours, -1, (150, 155, 155),1)
-            #cv2.imwrite("thresholded.png", gray)
-            for i, c in enumerate(contours):
-                rect = cv2.boundingRect(c)
-                x,y,w,h = rect
-                box = cv2.rectangle(img, (x,y), (x+w,y+h), (0,0,255), 2)
-                cropped = img[y: y+h, x: x+w]
-                text = pytesseract.image_to_string(cropped, config=custom_config)
-                print("TEXT", text)
-                if("S" in text or "s" in text):
-                    print("Found S")
-                    letters[camNum] = "S"
-                    break
-                elif("H" in text):
-                    print("Found H")
-                    letters[camNum] = "H"
-                    break
-                elif("U" in text):
-                    print("Found U")
-                    letters[camNum] = "U"
-                    break
-        print(str(u) + ":", letters)
-        filePtr = open('letters.txt', 'a+')
-        #filePtr.truncate(0)
-        filePtr.write(str(u) + ": {" + "left: " + letters[0] +', center: ' + letters[1] + ', right: ' + letters[2] + "}\n")
-        filePtr.close()
-        u+=1
-    filePtr = open('letters.txt', 'a+')
-    filePtr.write("\n")
-    filePtr.close()
-    #print("Shape:",img.shape())
-    #print(img)
-    #letterCenter = Visual.getLetter(gray)
-    # letterLeft = Visual.getLetter(imgLeft)
-    # letterRight = Visual.getLetter(imgRight)
-    return {"Left": letters[0], "Center" : letters[1], "Right" : letters[2]}
-
-def clearVictims():
-    global letters
-    letters["Left"] = "None"
-    letters["Right"] = "None"
-    letters["Center"] = "None"
-
+    #print("Updated", posX, posZ)
 # You should insert a getDevice-like function in order to get the
 # instance of a device of the robot. Something like:
 #  motor = robot.getMotor('motorname')
@@ -256,66 +172,43 @@ def clearVictims():
 # Robot stops for three seconds
 def stop():
     start = robot.getTime()
-    while(robot.step(timestep) != -1 and (robot.getTime()-start)<4):
+    while(robot.step(timestep) != -1 and (robot.getTime()-start)<3):
         update_sensors()
     update_sensors()
      # Sleep for 3 seconds
 
 def go_forward(x):
     global posLeft, posRight
-    """
-    imgarr[0][1] = cam.getImage()
-    imgarr[0][0] = cam_left.getImage()
-    imgarr[0][2] = cam_right.getImage()
-    print("FIRST SAVED IMAGE")
-    """
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
-    left_motor.setVelocity(3.0)
-    right_motor.setVelocity(3.0)
+    left_motor.setVelocity(5.0)
+    right_motor.setVelocity(5.0)
     left = left_encoder.getValue()
     # print("Starting, ", (left))
-    stops = [False, False]
+
     right = right_encoder.getValue()    
     while(robot.step(timestep) != -1 and abs(left-left_motor.getTargetPosition())>=0.005 and abs(right-right_motor.getTargetPosition())>=0.005):
         update_sensors()
         right_motor.setVelocity(left_motor.getVelocity())
         #print("Binary colorval:", colorval)
-        """
-        if(left > left_motor.getTargetPosition()/3 and stops[0] == False):
-            imgarr[1][1] = cam.getImage()
-            imgarr[1][0] = cam_left.getImage()
-            imgarr[1][2] = cam_right.getImage()
-            stops[0] = True
-            print("SECOND SAVED IMAGE")
-        if(left > left_motor.getTargetPosition()*(2/3) and stops[1] == False):
-            imgarr[2][1] = cam.getImage()
-            imgarr[2][0] = cam_left.getImage()
-            imgarr[2][2] = cam_right.getImage()
-            stops[1] = True
-            print("THIRD SAVED IMAGE")
-        """
-        #img = np.array(np.frombuffer(colorval, np.uint8).reshape((color.getHeight(), color.getWidth(), 4)))
-        #img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
+        img = np.array(np.frombuffer(colorval, np.uint8).reshape((color.getHeight(), color.getWidth(), 4)))
+        img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
         #hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[int(color.getHeight()/2)][int(color.getWidth()/2)]
         #hsv = cv2.cvtColor( cv2.cvtColor(img, cv2.COLOR_RGB2HSV),  cv2.COLOR_HSV2RGB)[0][0]
         #print("HSV : ", hsv)
         #print("RGB colorval : ", colorval)
         #print("Max velocity", left_motor.getMaxVelocity(), right_motor.getMaxVelocity())
         if(left_motor.getMaxVelocity()<6.28 and right_motor.getMaxVelocity()<6.28): # or color == swamp_colour
-            #print("SAW Swamp!")
+            print("SAW Swamp!")
             left_motor.setVelocity(2.0)
             right_motor.setVelocity(2.0)
 
-        if(colorval[0]<blackThresh and colorval[1]<blackThresh and colorval[2]<blackThresh): # or color == swamp_colour
+        if(colorval[0]<70 and colorval[1]<70 and colorval[2]<70): # or color == swamp_colour
             print("SAW HOLE!")
             print("Blacking out")
             AI.blackout()
             go_backwards(abs(left-left_motor.getTargetPosition())-x)
             return False
-        # if(letterCenter == "None"):
-        #    letterCenter = Visual.getLetter()
-        #    print("Letter Saw:", letterCenter)
         
         #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
         #print("Going forward: ", left_motor.getVelocity(), right_motor.getVelocity())
@@ -360,7 +253,7 @@ def turn(deg):
     error = 0
     totalerror = 0
     i = 0
-    while(robot.step(timestep) != -1 and (abs(error)>0.4 or i==0)):
+    while(robot.step(timestep) != -1 and (abs(error)>0.3 or i==0)):
         error = deg-newangle
         
         if(error > 180):
@@ -516,8 +409,7 @@ def goTileWithVictim(dir):
         sendMessage('T')
         stop()
     
-    print("Go Forward")
-    x = go_forward(2.0)
+    x = go_forward(6.0)
     
     if(not x):
         print("SAW Hole")
@@ -525,22 +417,8 @@ def goTileWithVictim(dir):
     
     else:
         print("No Hole")
-        #return True
-    
-    imgarr[0][1] = cam.getImage()
-    imgarr[0][0] = cam_left.getImage()
-    imgarr[0][2] = cam_right.getImage()
-    x = go_forward(4.0)
-    
-    if(not x):
-        print("SAW Hole")
-        return False
-    
-    else:
-        print("No Hole")
-        return True
         #go_forward(3.25)
-
+        return True
 
 
 #go_forward(5.85)
@@ -549,62 +427,23 @@ def goTileWithVictim(dir):
 pos = 0
 
 # Task main()
-i = 0
 while robot.step(timestep) != -1:
     update_sensors()
-    if(i != 0):
-        letters = getLetters()
-        print("LETTERS", letters)
-    i+=1
-    print("Current position: X:", posX, "Y:", posY, "Z:", posZ)
-    print("Left:", left)
-    print("Right:", right)
-    print("Front:", (frontl+frontr)/2)
-    print("Back:", (backl+backr)/2)
-    if(frontl <= 0.12 and frontr<=0.12):
+    print("Left", left)
+    print("Right", right)
+    if(frontl <= 0.1 and frontr<=0.1):
         print("Wall in front")
-        if letters["Center"] != "None":
-            print("Reporting Victim Center!")
-            sendMessage(victimType=letters["Center"])
-            stop()      
-            clearVictims()
         AI.markWall(AI.direction)
-    if(right <= 0.14):
+    if(right <= 0.1):
         print("Wall to right")
-        if letters["Right"] != "None":
-            print("Reporting Victim Right!")
-            sendMessage(victimType=letters["Right"])
-            stop()
-            clearVictims()
         AI.markWall((1 + AI.direction) % 4)
-    if(backl <= 0.12 and backr <= 0.12):
+    if(backl <= 0.1 and backr <= 0.1):
         print("Wall to back")
         AI.markWall((2 + AI.direction) % 4)
-    if(left <= 0.14):
+    if(left <= 0.1):
         print("Wall to left")
-        if letters["Left"] != "None":
-            print("Reporting Victim Left!")
-            sendMessage(victimType=letters["Left"])
-            stop()   
-            clearVictims()
         AI.markWall((3 + AI.direction) % 4)
-    clearVictims()
-    #IMAGE STUFF:
-    '''imgCenter = cam.getImage()
-    imgLeft = cam_left.getImage()
-    imgRight = cam_right.getImage()
-    letterCenter = Visual.getLetter(imgCenter)'''
-    #cam.saveImage("visionCenter.png", 100)
-    #cam_left.saveImage("visionLeft.png", 100)
-    #cam_right.saveImage("visionRight.png", 100)
 
-    '''img = cv2.imread("visionCenter.png")
-    testThreshold(img)    '''
-    
-    # letterRight = Visual.getLetter()
-    # letterLeft = Visual.getLetter()
-        
-    
     successful = False
     while not successful:
         commands = AI.calculate() # Get commands
@@ -613,11 +452,8 @@ while robot.step(timestep) != -1:
             sendEndGame()
             exit(0)
         if(len(commands)>1):
-            for i in range(len(commands)):
-                if(i == len(commands)-1):
-                    successful = goTile(commands[i])
-                else:
-                    successful = goTile(commands[i])
+            for command in commands:
+                successful = goTile(command)
                 update_sensors()
         else:
             successful = goTileWithVictim(commands[0])
@@ -625,6 +461,117 @@ while robot.step(timestep) != -1:
 
     # Only write to file once commands are successfully executed
     AI.flush() # Actually write data to file
+
+    """
+    if(frontl > 0.1 and frontr>0.1):
+        goTile('F')
+    elif(right > 0.1):
+        goTile('R')
+    elif(left > 0.1):
+        goTile('L')
+    else:
+        goTile('B')
+    """
+    
+    """
+    goTile('F')
+    goTile('F')
+    goTile('F')
+    print(frontl, frontr, left, right)
+    
+    goTile('R')
+    goTile('F')
+    goTile('L')
+    goTile('F')
+    goTile('R')
+    goTile('F')
+    goTile('R')
+    goTile('R')
+    goTile('L')
+    goTile('F')
+    """
+    """
+    go_forward(5.9)
+    newpos =(-90+pos)%360
+    if(newpos>=180):
+        newpos = newpos-360
+    if(newpos<=-180):
+        newpos = newpos+360
+    print("Pos", newpos)
+    turn(pos, newpos)
+    pos = newpos
+    go_forward(5.9)
+    newpos =(-90+pos)%360
+    if(newpos>=180):
+        newpos = newpos-360
+    if(newpos<=-180):
+        newpos = newpos+360
+    print("Pos", newpos)
+    turn(pos, newpos)
+    pos = newpos
+    go_forward(5.9)
+    newpos =(180+pos)%360
+    if(newpos>=180):
+        newpos = newpos-360
+    if(newpos<=-180):
+        newpos = newpos+360
+    print("Pos", newpos)
+    turn(pos, newpos)
+    pos = newpos
+    go_forward(5.9)
+    newpos =(90+pos)%360
+    if(newpos>=180):
+        newpos = newpos-360
+    if(newpos<=-180):
+        newpos = newpos+360
+    print("Pos", newpos)
+    turn(pos, newpos)
+    pos = newpos
+    go_forward(5.9)
+    newpos =(90+pos)%360
+    if(newpos>=180):
+        newpos = newpos-360
+    if(newpos<=-180):
+        newpos = newpos+360
+    print("Pos", newpos)
+    turn(pos, newpos)
+    pos = newpos
+    go_forward(5.9)
+    newpos =(90+pos)%360
+    if(newpos>=180):
+        newpos = newpos-360
+    if(newpos<=-180):
+        newpos = newpos+360
+    print("Pos", newpos)
+    turn(pos, newpos)
+    pos = newpos
+    go_forward(5.9)
+    """
+    """
+    pos =(180+newangle)%360
+    if(newangle>180):
+        newangle = newangle-360
+    print("Pos", pos)
+    turn(pos)
+    pos =(270+newangle)%360
+    if(newangle>180):
+        newangle = newangle-360
+    print("Pos", pos)
+    turn(pos)
+    """
+    #turn(90)
+
+    #print("Gyro: ", gyro.getValues())
+    #print(left_encoder.getValue())
+    #print(right_encoder.getValue())
+    # Read the sensors:
+    # Enter here functions to read sensor data, like:
+    #  val = ds.getValue()
+
+    # Process sensor data here.
+
+    # Enter here functions to send actuator commands, like:
+    #  motor.setPosition(10.0)
     pass
 
 # Enter here exit cleanup code.
