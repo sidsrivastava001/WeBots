@@ -49,8 +49,9 @@ posY = 0
 posZ = 0
 optimalFrontDistance = 0.04 # For front callibration
 blackThresh = 70
+heatThresh = 27.5
 letters = {"Left": "None", "Center" : "None", "Right" : "None"}
-imgarr = [[0, 0, 0]]
+imgarr = [[0, 0, 0], [0,0,0]]
 leftAtCapture = 0
 rightAtCapture = 0
 
@@ -135,7 +136,7 @@ def sendMessage(victimType='T'):
         message = struct.pack('i i c', int(position[0] * 100), int(position[2] * 100), b"S")
     elif victimType=="U":
         print("Sending message")
-        message = struct.pack('i i c', int(position[0] * 100), int(position[1] * 100), b"U")
+        message = struct.pack('i i c', int(position[0] * 100), int(position[2] * 100), b"U")
     print(struct.unpack('i i c', message))
     emitter.send(message)
 
@@ -248,6 +249,13 @@ def clearVictims():
     letters["Left"] = "None"
     letters["Right"] = "None"
     letters["Center"] = "None"
+
+def checkHeat():
+    if(leftheat>heatThresh or rightheat>heatThresh):
+        print("SEE VICTIM")
+        sendMessage('T')
+        stop()
+        victim = 1
 
 # You should insert a getDevice-like function in order to get the
 # instance of a device of the robot. Something like:
@@ -455,11 +463,7 @@ def goTile(dir):
 def goTileWithVictim(dir):
     global pos
     victim = 0
-    if(leftheat>30 or rightheat>30):
-        print("SEE VICTIM")
-        sendMessage('T')
-        stop()
-        victim = 1
+    checkHeat()
     if(dir == AI.convertCommand(1)):
 
         pos =(-90+pos)%360
@@ -514,10 +518,7 @@ def goTileWithVictim(dir):
     turn(pos)
 
     # HEAT VICTIM DETECTION
-    if((leftheat>30 or rightheat>30) and victim != 1):
-        print("SEE VICTIM")
-        sendMessage('T')
-        stop()
+    checkHeat()
     
     print("Go Forward")
     x = go_forward(2.0)
@@ -533,11 +534,25 @@ def goTileWithVictim(dir):
     imgarr[0][1] = cam.getImage()
     imgarr[0][0] = cam_left.getImage()
     imgarr[0][2] = cam_right.getImage()
-    x = go_forward(4.0)
-    update_sensors()
-    leftAtCapture = left
-    rightAtCapture = right
+    x = go_forward(2.0)
+    #update_sensors()
+    #leftAtCapture = left
+    #rightAtCapture = right
     
+    if(not x):
+        print("SAW Hole")
+        return False
+    
+    else:
+        print("No Hole")
+        #return True
+        #go_forward(3.25)
+    
+    imgarr[1][1] = cam.getImage()
+    imgarr[1][0] = cam_left.getImage()
+    imgarr[1][2] = cam_right.getImage()
+
+    x = go_forward(2.0)
     if(not x):
         print("SAW Hole")
         return False
@@ -547,7 +562,7 @@ def goTileWithVictim(dir):
         return True
         #go_forward(3.25)
 
-
+    checkHeat()
 
 #go_forward(5.85)
 #print(left_heat_sensor.getValue())
