@@ -51,6 +51,8 @@ optimalFrontDistance = 0.04 # For front callibration
 blackThresh = 70
 letters = {"Left": "None", "Center" : "None", "Right" : "None"}
 imgarr = [[0, 0, 0]]
+leftAtCapture = 0
+rightAtCapture = 0
 
 hole_colour = b'\x1e\x1e\x1e\xff'
 hole_colour2 = b'\n\n\n\xff'
@@ -532,6 +534,9 @@ def goTileWithVictim(dir):
     imgarr[0][0] = cam_left.getImage()
     imgarr[0][2] = cam_right.getImage()
     x = go_forward(4.0)
+    update_sensors()
+    leftAtCapture = left
+    rightAtCapture = right
     
     if(not x):
         print("SAW Hole")
@@ -613,10 +618,11 @@ while robot.step(timestep) != -1:
             print('FINISHED MAZE!')
             sendEndGame()
             exit(0)
-        if(len(commands)>1):
+        if(len(commands)>1): # Backtracking (BFS)
+            clearVictims()
             for i in range(len(commands)):
-                if(i == len(commands)-1):
-                    successful = goTile(commands[i])
+                if(i == len(commands)-1): # Last command
+                    successful = goTileWithVictim(commands[i])
                 else:
                     successful = goTile(commands[i])
                 update_sensors()
