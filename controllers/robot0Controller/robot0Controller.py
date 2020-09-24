@@ -50,7 +50,7 @@ posZ = 0
 optimalFrontDistance = 0.04 # For front callibration
 blackThresh = 70
 letters = {"Left": "None", "Center" : "None", "Right" : "None"}
-imgarr = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+imgarr = [[0, 0, 0]]
 
 hole_colour = b'\x1e\x1e\x1e\xff'
 hole_colour2 = b'\n\n\n\xff'
@@ -214,12 +214,15 @@ def getLetters():
                 text = pytesseract.image_to_string(cropped, config=custom_config)
                 print("TEXT", text)
                 if("S" in text or "s" in text):
+                    print("Found S")
                     letters[camNum] = "S"
                     break
                 elif("H" in text):
+                    print("Found H")
                     letters[camNum] = "H"
                     break
                 elif("U" in text):
+                    print("Found U")
                     letters[camNum] = "U"
                     break
         print(str(u) + ":", letters)
@@ -253,19 +256,19 @@ def clearVictims():
 # Robot stops for three seconds
 def stop():
     start = robot.getTime()
-    while(robot.step(timestep) != -1 and (robot.getTime()-start)<3):
+    while(robot.step(timestep) != -1 and (robot.getTime()-start)<4):
         update_sensors()
     update_sensors()
      # Sleep for 3 seconds
 
 def go_forward(x):
     global posLeft, posRight, letterCenter, imgarr
-    
+    """
     imgarr[0][1] = cam.getImage()
     imgarr[0][0] = cam_left.getImage()
     imgarr[0][2] = cam_right.getImage()
     print("FIRST SAVED IMAGE")
-    
+    """
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
     left_motor.setVelocity(3.0)
@@ -278,7 +281,7 @@ def go_forward(x):
         update_sensors()
         right_motor.setVelocity(left_motor.getVelocity())
         #print("Binary colorval:", colorval)
-        
+        """
         if(left > left_motor.getTargetPosition()/3 and stops[0] == False):
             imgarr[1][1] = cam.getImage()
             imgarr[1][0] = cam_left.getImage()
@@ -291,7 +294,7 @@ def go_forward(x):
             imgarr[2][2] = cam_right.getImage()
             stops[1] = True
             print("THIRD SAVED IMAGE")
-        
+        """
         #img = np.array(np.frombuffer(colorval, np.uint8).reshape((color.getHeight(), color.getWidth(), 4)))
         #img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
         #hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[int(color.getHeight()/2)][int(color.getWidth()/2)]
@@ -563,6 +566,20 @@ def goTileWithVictim(dir):
     
     print("Go Forward")
     x = go_forward(6.0)
+    """
+    if(not x):
+        print("SAW Hole")
+        return False
+    
+    else:
+        print("No Hole")
+        #return True
+    
+    imgarr[0][1] = cam.getImage()
+    imgarr[0][0] = cam_left.getImage()
+    imgarr[0][2] = cam_right.getImage()
+    x = go_forward(4.0)
+    """
     if(not x):
         print("SAW Hole")
         return False
@@ -584,26 +601,28 @@ i = 0
 while robot.step(timestep) != -1:
     update_sensors()
     if(i != 0):
-        letters = getLetters()
+        #letters = getLetters()
         print("LETTERS", letters)
     i+=1
     print("Current position: X:", posX, "Y:", posY, "Z:", posZ)
-    print("Left", left)
-    print("Right", right)
+    print("Left:", left)
+    print("Right:", right)
+    print("Front:", (frontl+frontr)/2)
+    print("Back:", (backl+backr)/2)
     if(frontl <= 0.12 and frontr<=0.12):
         print("Wall in front")
         if letters["Center"] != "None":
             print("Reporting Victim Center!")
-            stop()
             sendMessage(victimType=letters["Center"])
+            stop()      
             clearVictims()
         AI.markWall(AI.direction)
     if(right <= 0.14):
         print("Wall to right")
         if letters["Right"] != "None":
             print("Reporting Victim Right!")
-            stop()
             sendMessage(victimType=letters["Right"])
+            stop()
             clearVictims()
         AI.markWall((1 + AI.direction) % 4)
     if(backl <= 0.12 and backr <= 0.12):
@@ -613,8 +632,8 @@ while robot.step(timestep) != -1:
         print("Wall to left")
         if letters["Left"] != "None":
             print("Reporting Victim Left!")
-            stop()
             sendMessage(victimType=letters["Left"])
+            stop()   
             clearVictims()
         AI.markWall((3 + AI.direction) % 4)
     clearVictims()
