@@ -1,0 +1,24 @@
+0: {left: None, center: None, right: None}
+1: {left: None, center: None, right: None}
+2: {left: None, center: None, right: None}
+
+0: {left: S, center: None, right: None}
+1: {left: S, center: None, right: None}
+2: {left: S, center: None, right: None}
+
+0: {left: None, center: None, right: S}
+1: {left: None, center: None, right: S}
+2: {left: None, center: None, right: S}
+
+0: {left: None, center: None, right: None}
+1: {left: None, center: None, right: None}
+2: {left: None, center: None, right: None}
+
+0: {left: None, center: None, right: None}
+1: {left: None, center: None, right: None}
+2: {left: None, center: None, right: None}
+
+0: {left: None, center: None, right: None}
+1: {left: None, center: None, right: None}
+2: {left: None, center: None, right: None}
+

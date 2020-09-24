@@ -48,7 +48,7 @@ posX = 0
 posY = 0
 posZ = 0
 optimalFrontDistance = 0.04 # For front callibration
-blackThresh = 80
+blackThresh = 70
 letters = {"Left": "None", "Center" : "None", "Right" : "None"}
 imgarr = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
 
@@ -198,7 +198,12 @@ def getLetters():
             contours, h = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             #cv2.imwrite("unthresholded.png", gray)
             cv2.drawContours(img, contours, -1, (0, 255, 0), 1)
-            #cv2.imwrite(str(u)+" "+str(camNum)+".png", img)
+            if camNum == 0:
+                cv2.imwrite(str(u)+" left.png", img)
+            if camNum == 1:
+                cv2.imwrite(str(u)+" center.png", img)
+            if camNum == 2:
+                cv2.imwrite(str(u)+" right.png", img)
             #cv2.drawContours(gray, contours, -1, (150, 155, 155),1)
             #cv2.imwrite("thresholded.png", gray)
             for i, c in enumerate(contours):
@@ -217,14 +222,21 @@ def getLetters():
                 elif("U" in text):
                     letters[camNum] = "U"
                     break
-            u+=1
-    print(letters)
+        print(str(u) + ":", letters)
+        filePtr = open('letters.txt', 'a+')
+        #filePtr.truncate(0)
+        filePtr.write(str(u) + ": {" + "left: " + letters[0] +', center: ' + letters[1] + ', right: ' + letters[2] + "}\n")
+        filePtr.close()
+        u+=1
+    filePtr = open('letters.txt', 'a+')
+    filePtr.write("\n")
+    filePtr.close()
     #print("Shape:",img.shape())
     #print(img)
     #letterCenter = Visual.getLetter(gray)
     # letterLeft = Visual.getLetter(imgLeft)
     # letterRight = Visual.getLetter(imgRight)
-    return {"Left": letters[1], "Center" : letters[0], "Right" : letters[2]}
+    return {"Left": letters[0], "Center" : letters[1], "Right" : letters[2]}
 
 def clearVictims():
     global letters
@@ -248,31 +260,40 @@ def stop():
 
 def go_forward(x):
     global posLeft, posRight, letterCenter, imgarr
-    imgarr[0][0] = cam.getImage()
-    imgarr[0][1] = cam_left.getImage()
+    
+    imgarr[0][1] = cam.getImage()
+    imgarr[0][0] = cam_left.getImage()
     imgarr[0][2] = cam_right.getImage()
+    print("FIRST SAVED IMAGE")
+    
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
-    left_motor.setVelocity(5.0)
-    right_motor.setVelocity(5.0)
+    left_motor.setVelocity(3.0)
+    right_motor.setVelocity(3.0)
     left = left_encoder.getValue()
     # print("Starting, ", (left))
-
+    stops = [False, False]
     right = right_encoder.getValue()    
     while(robot.step(timestep) != -1 and abs(left-left_motor.getTargetPosition())>=0.005 and abs(right-right_motor.getTargetPosition())>=0.005):
         update_sensors()
         right_motor.setVelocity(left_motor.getVelocity())
         #print("Binary colorval:", colorval)
-        if(abs(left-(left_motor.getTargetPosition()/3))<=0.01):
-            imgarr[1][0] = cam.getImage()
-            imgarr[1][1] = cam_left.getImage()
+        
+        if(left > left_motor.getTargetPosition()/3 and stops[0] == False):
+            imgarr[1][1] = cam.getImage()
+            imgarr[1][0] = cam_left.getImage()
             imgarr[1][2] = cam_right.getImage()
-        if(abs(left-(left_motor.getTargetPosition()*2/3))<=0.01):
-            imgarr[2][0] = cam.getImage()
-            imgarr[2][1] = cam_left.getImage()
+            stops[0] = True
+            print("SECOND SAVED IMAGE")
+        if(left > left_motor.getTargetPosition()*(2/3) and stops[1] == False):
+            imgarr[2][1] = cam.getImage()
+            imgarr[2][0] = cam_left.getImage()
             imgarr[2][2] = cam_right.getImage()
-        img = np.array(np.frombuffer(colorval, np.uint8).reshape((color.getHeight(), color.getWidth(), 4)))
-        img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
+            stops[1] = True
+            print("THIRD SAVED IMAGE")
+        
+        #img = np.array(np.frombuffer(colorval, np.uint8).reshape((color.getHeight(), color.getWidth(), 4)))
+        #img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
         #hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[int(color.getHeight()/2)][int(color.getWidth()/2)]
         #hsv = cv2.cvtColor( cv2.cvtColor(img, cv2.COLOR_RGB2HSV),  cv2.COLOR_HSV2RGB)[0][0]
         #print("HSV : ", hsv)
@@ -388,7 +409,7 @@ def goTile(dir):
     victim = 0
     print("LEFT HEAT", leftheat)
     print("RIGHT HEAT", rightheat)
-    if(leftheat>30 or rightheat>30):
+    if(leftheat>28 or rightheat>28):
         
         print("SEE VICTIM")
         sendMessage('T')
@@ -425,7 +446,7 @@ def goTile(dir):
         turn(pos)
         print("LEFT HEAT", leftheat)
         print("RIGHT HEAT", rightheat)
-        if((leftheat>30 or rightheat>30) and victim != 1):
+        if((leftheat>28 or rightheat>28) and victim != 1):
             print("SEE VICTIM")
             sendMessage('T')
             stop()
@@ -440,7 +461,7 @@ def goTile(dir):
     
     print("LEFT HEAT", leftheat)
     print("RIGHT HEAT", rightheat)
-    if((leftheat>30 or rightheat>30) and victim != 1):
+    if((leftheat>28 or rightheat>28) and victim != 1):
         print("SEE VICTIM")
         sendMessage('T')
         stop()
@@ -481,7 +502,7 @@ def goTileWithVictim(dir):
     victim = 0
     print("LEFT HEAT", leftheat)
     print("RIGHT HEAT", rightheat)
-    if(leftheat>30 or rightheat>30):
+    if(leftheat>28 or rightheat>28):
         
         print("SEE VICTIM")
         sendMessage('T')
@@ -535,7 +556,7 @@ def goTileWithVictim(dir):
     # HEAT VICTIM DETECTION
     print("LEFT HEAT", leftheat)
     print("RIGHT HEAT", rightheat)
-    if((leftheat>30 or rightheat>30) and victim != 1):
+    if((leftheat>28 or rightheat>28) and victim != 1):
         print("SEE VICTIM")
         sendMessage('T')
         stop()
@@ -577,7 +598,7 @@ while robot.step(timestep) != -1:
             sendMessage(victimType=letters["Center"])
             clearVictims()
         AI.markWall(AI.direction)
-    if(right <= 0.12):
+    if(right <= 0.14):
         print("Wall to right")
         if letters["Right"] != "None":
             print("Reporting Victim Right!")
@@ -588,7 +609,7 @@ while robot.step(timestep) != -1:
     if(backl <= 0.12 and backr <= 0.12):
         print("Wall to back")
         AI.markWall((2 + AI.direction) % 4)
-    if(left <= 0.12):
+    if(left <= 0.14):
         print("Wall to left")
         if letters["Left"] != "None":
             print("Reporting Victim Left!")
