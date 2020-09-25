@@ -14,6 +14,9 @@ import cv2
 import numpy as np
 import pytesseract
 
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+
 def clearFile():
         print("Clearing file!")
         filePtr = open('wall.txt', 'w+')
@@ -49,7 +52,7 @@ posY = 0
 posZ = 0
 optimalFrontDistance = 0.04 # For front callibration
 blackThresh = 70
-heatThresh = 27.5
+heatThresh = 27
 maskRatio = (1/6)
 letters = {"Left": "None", "Center" : "None", "Right" : "None"}
 imgarr = [[0, 0, 0], [0, 0, 0], [0,0,0]]
@@ -216,37 +219,52 @@ def getLetters():
             # draw all contours in green and accepted ones in red
             contours, h = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             #cv2.imwrite("unthresholded.png", gray)
-            cv2.drawContours(img, contours, -1, (0, 255, 0), 1)
+            #cv2.drawContours(img, contours, -1, (0, 255, 0), 0)
+            """
             if camNum == 0:
                 cv2.imwrite(str(u)+" left.png", gray)
             if camNum == 1:
                 cv2.imwrite(str(u)+" center.png", gray)
             if camNum == 2:
                 cv2.imwrite(str(u)+" right.png", gray)
+            """
             #cv2.drawContours(gray, contours, -1, (150, 155, 155),1)
             #cv2.imwrite("thresholded.png", gray)
             for i, c in enumerate(contours):
-                rect = cv2.boundingRect(c)
-                x,y,w,h = rect
-                box = cv2.rectangle(img, (x,y), (x+w,y+h), (0,0,255), 2)
-                cropped = img[y: y+h, x: x+w]
-                cv2.imshow("Img", cropped)
-                cv2.waitKey(0)
-                cv2.destroyAllWindows()
-                text = pytesseract.image_to_string(cropped, config=custom_config)
-                print("TEXT", text)
-                if("S" in text or "s" in text):
-                    print("Found S")
-                    letters[camNum] = "S"
-                    break
-                elif("H" in text):
-                    print("Found H")
-                    letters[camNum] = "H"
-                    break
-                elif("U" in text):
-                    print("Found U")
-                    letters[camNum] = "U"
-                    break
+                #print("Len", str(camNum) , cv2.contourArea(c))
+                if(cv2.contourArea(c)>65):
+                    rect = cv2.boundingRect(c)
+                    x,y,w,h = rect
+                    #box = cv2.rectangle(img, (x,y), (x+w,y+h), (0,0,0), 2)
+                    cropped = img[y: y+h, x: x+w]
+                    top = int(0.2 * cropped.shape[0])  # shape[0] = rows
+                    bottom = top
+                    left = int(0.2 * cropped.shape[1])  # shape[1] = cols
+                    right = left
+                    #cropped = cv2.copyMakeBorder(cropped, top, bottom, left, right, cv2.BORDER_CONSTANT, np.array([255, 255, 255]))
+                    cropped = cv2.GaussianBlur(cropped,(3, 3), 0)
+                    cropped = cv2.cvtColor(cropped, cv2.COLOR_RGB2HSV)
+                    cropped = mask = cv2.inRange(cropped, np.array([0, 0, 189]), np.array([179, 255, 255]))
+                    #cropped = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+                    #cropped = cv2.threshold(cropped, 130, 255, cv2.THRESH_BINARY)[1]
+                    #cv2.imshow("Img", cropped)
+                    #cv2.waitKey(0)
+                    #cv2.destroyAllWindows()
+
+                    text = pytesseract.image_to_string(cropped, config=custom_config)
+                    #print("TEXT", text)
+                    if("S" in text or "s" in text):
+                        print("Found S")
+                        letters[camNum] = "S"
+                        break
+                    elif("H" in text):
+                        print("Found H")
+                        letters[camNum] = "H"
+                        break
+                    elif("U" in text):
+                        print("Found U")
+                        letters[camNum] = "U"
+                        break
         print(str(u) + ":", letters)
         filePtr = open('letters.txt', 'a+')
         #filePtr.truncate(0)
@@ -285,7 +303,7 @@ def checkHeat():
 # Robot stops for three seconds
 def stop():
     start = robot.getTime()
-    while(robot.step(timestep) != -1 and (robot.getTime()-start)<4):
+    while(robot.step(timestep) != -1 and (robot.getTime()-start)<3):
         update_sensors()
     update_sensors()
      # Sleep for 3 seconds
@@ -631,7 +649,8 @@ while robot.step(timestep) != -1:
         pos = pos+360
     turn(pos)
     print("Pos", pos)
-    if(frontl<=0.15):
+    print("FRONT OBS", frontl)
+    if(frontr<=0.14):
          
          frontObs = True     
     pos =(-17+pos)%360
