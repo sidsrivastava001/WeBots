@@ -50,8 +50,9 @@ posZ = 0
 optimalFrontDistance = 0.04 # For front callibration
 blackThresh = 70
 heatThresh = 27.5
+maskRatio = (1/6)
 letters = {"Left": "None", "Center" : "None", "Right" : "None"}
-imgarr = [[0, 0, 0], [0,0,0]]
+imgarr = [[0, 0, 0], [0, 0, 0], [0,0,0]]
 leftAtCapture = 0
 rightAtCapture = 0
 
@@ -193,20 +194,35 @@ def getLetters():
             img = np.array(np.frombuffer(imgList[camNum], np.uint8).reshape((cam.getHeight(), cam.getWidth(), 4)))
             img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
             #cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            
+            imga = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+            img = imga
+            (height, width, depth) = img.shape
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             
+            # MASKING
+            if camNum == 0: # Mask Left Camera
+                rMask = np.zeros((height, width, 1), np.uint8) # rMask IS FOR LEFT CAMERA IMAGE
+                rMask[0:height, 0:(int(width * (1-maskRatio)))] = 255
+                maskedImg = cv2.bitwise_and(gray, gray, mask=rMask)
+                gray = maskedImg
+
+            if camNum == 2: # Mask Right Camera
+                lMask = np.zeros((height, width, 1), np.uint8) # lMask IS FOR RIGHT CAMERA IMAGE
+                lMask[0:height, (int(width * (maskRatio))):width] = 255
+                maskedImg = cv2.bitwise_and(gray, gray, mask=lMask)
+                gray = maskedImg
+
             thresh = cv2.threshold(gray, 140, 255, cv2.THRESH_BINARY)[1]
             # draw all contours in green and accepted ones in red
             contours, h = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             #cv2.imwrite("unthresholded.png", gray)
             cv2.drawContours(img, contours, -1, (0, 255, 0), 1)
             if camNum == 0:
-                cv2.imwrite(str(u)+" left.png", img)
+                cv2.imwrite(str(u)+" left.png", gray)
             if camNum == 1:
-                cv2.imwrite(str(u)+" center.png", img)
+                cv2.imwrite(str(u)+" center.png", gray)
             if camNum == 2:
-                cv2.imwrite(str(u)+" right.png", img)
+                cv2.imwrite(str(u)+" right.png", gray)
             #cv2.drawContours(gray, contours, -1, (150, 155, 155),1)
             #cv2.imwrite("thresholded.png", gray)
             for i, c in enumerate(contours):
@@ -271,7 +287,7 @@ def stop():
     update_sensors()
      # Sleep for 3 seconds
 
-def go_forward(x):
+def go_forward(x, alreadyGone=0):
     global posLeft, posRight
     """
     imgarr[0][1] = cam.getImage()
@@ -281,8 +297,8 @@ def go_forward(x):
     """
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
-    left_motor.setVelocity(4.0)
-    right_motor.setVelocity(4.0)
+    left_motor.setVelocity(4.5)
+    right_motor.setVelocity(4.5)
     left = left_encoder.getValue()
     # print("Starting, ", (left))
     stops = [False, False]
@@ -321,7 +337,7 @@ def go_forward(x):
             print("SAW HOLE!")
             print("Blacking out")
             AI.blackout()
-            go_backwards(abs(left-left_motor.getTargetPosition())-x)
+            go_backwards(abs(left-left_motor.getTargetPosition())-x+alreadyGone)
             return False
         # if(letterCenter == "None"):
         #    letterCenter = Visual.getLetter()
@@ -363,7 +379,7 @@ def go_backwards(x):
     
 def turn(deg):
     global posLeft, posRight, newangle
-    clearVictims()
+    #clearVictims()
     left_motor.setPosition(float("inf"))
     right_motor.setPosition(float("inf"))
     kP = 0.03
@@ -398,6 +414,8 @@ def turn(deg):
 # - perform simulation steps until Webots is stopping the controller
 def goTile(dir):
     global pos
+    backwards = False
+    checkHeat()
     if(dir == AI.convertCommand(1)):
 
         pos =(-90+pos)%360
@@ -418,13 +436,7 @@ def goTile(dir):
         
         print("Pos", pos)
     if(dir == AI.convertCommand(2)):
-        
-        pos =(180+pos)%360
-    
-        if(pos>180):
-            pos = pos-360
-        if(pos<-180):
-            pos = pos+360
+        backwards = True
         
         print("Pos", pos)
     if(frontl<=0.1 and frontr<=0.1):
@@ -449,7 +461,25 @@ def goTile(dir):
         left_motor.setVelocity(0)
         right_motor.setVelocity(0)
         update_sensors()
-    turn(pos)
+    if(backwards):   
+        pos =(90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        turn(pos)
+        checkHeat()
+        pos =(90+pos)%360
+    
+        if(pos>180):
+            pos = pos-360
+        if(pos<-180):
+            pos = pos+360
+        turn(pos)
+    else:
+        turn(pos)
+    checkHeat()
     x = go_forward(6.0)
     
     if(not x):
@@ -519,7 +549,9 @@ def goTileWithVictim(dir):
 
     # HEAT VICTIM DETECTION
     checkHeat()
-    
+    imgarr[0][1] = cam.getImage()
+    imgarr[0][0] = cam_left.getImage()
+    imgarr[0][2] = cam_right.getImage()
     print("Go Forward")
     x = go_forward(2.0)
     
@@ -531,10 +563,10 @@ def goTileWithVictim(dir):
         print("No Hole")
         #return True
     
-    imgarr[0][1] = cam.getImage()
-    imgarr[0][0] = cam_left.getImage()
-    imgarr[0][2] = cam_right.getImage()
-    x = go_forward(2.0)
+    imgarr[1][1] = cam.getImage()
+    imgarr[1][0] = cam_left.getImage()
+    imgarr[1][2] = cam_right.getImage()
+    x = go_forward(2.0, 2.0)
     #update_sensors()
     #leftAtCapture = left
     #rightAtCapture = right
@@ -548,11 +580,11 @@ def goTileWithVictim(dir):
         #return True
         #go_forward(3.25)
     
-    imgarr[1][1] = cam.getImage()
-    imgarr[1][0] = cam_left.getImage()
-    imgarr[1][2] = cam_right.getImage()
+    imgarr[2][1] = cam.getImage()
+    imgarr[2][0] = cam_left.getImage()
+    imgarr[2][2] = cam_right.getImage()
 
-    x = go_forward(2.0)
+    x = go_forward(2.0, 4.0)
     if(not x):
         print("SAW Hole")
         return False
@@ -571,6 +603,7 @@ pos = 0
 
 # Task main()
 i = 0
+frontObs = False
 while robot.step(timestep) != -1:
     update_sensors()
     if(i != 0):
@@ -580,9 +613,30 @@ while robot.step(timestep) != -1:
     print("Current position: X:", posX, "Y:", posY, "Z:", posZ)
     print("Left:", left)
     print("Right:", right)
-    print("Front:", (frontl+frontr)/2)
+    print("Front left:", (frontl))
+    print("Front right:", frontr)
     print("Back:", (backl+backr)/2)
-    if(frontl <= 0.12 and frontr<=0.12):
+    pos =(17+pos)%360
+    
+    if(pos>180):
+        pos = pos-360
+    if(pos<-180):
+        pos = pos+360
+    turn(pos)
+    print("Pos", pos)
+    if(frontl<=0.15):
+         print("Obstacle in front")
+         frontObs = True     
+    pos =(-17+pos)%360
+    
+    if(pos>180):
+        pos = pos-360
+    if(pos<-180):
+        pos = pos+360
+    turn(pos)
+    print("Pos", pos)
+    
+    if((frontl <= 0.13 and frontr<=0.13) or frontObs):
         print("Wall in front")
         if letters["Center"] != "None":
             print("Reporting Victim Center!")
@@ -590,6 +644,7 @@ while robot.step(timestep) != -1:
             stop()      
             clearVictims()
         AI.markWall(AI.direction)
+    frontObs = False
     if(right <= 0.14):
         print("Wall to right")
         if letters["Right"] != "None":
