@@ -270,6 +270,23 @@ class Nav:
             self.markWall(i, writeToFile=True)
         self.location = self.previousLocation
 
+    def markObstacle(self):
+        adjustRow = 0
+        adjustCol = 0
+        if self.direction == 0:  # Moving up
+            adjustRow = 1
+        elif self.direction == 1:  # Moving right
+            adjustCol = 1
+        elif self.direction == 2:  # Moving down
+            adjustRow = -1
+        else:  # Moving left
+            adjustCol = -1
+        obsLocation = (self.location[0] + adjustRow, self.location[1] + adjustCol)
+        self.markVisited(loc=obsLocation, writeToFile=True)
+        self.field[obsLocation[0]][obsLocation[1]].blackout()
+        for i in range(0, 4):
+            self.markWall(i, loc=obsLocation, writeToFile=True)
+        pass
 
     # Finds the path to the nearest unvisited tile via BFS
     # @return Returns the set of commands to reach the new location, the new location's coordinates, and the new direction. Does NOT update location & direction for you
