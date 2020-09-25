@@ -230,6 +230,9 @@ def getLetters():
                 x,y,w,h = rect
                 box = cv2.rectangle(img, (x,y), (x+w,y+h), (0,0,255), 2)
                 cropped = img[y: y+h, x: x+w]
+                cv2.imshow("Img", cropped)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
                 text = pytesseract.image_to_string(cropped, config=custom_config)
                 print("TEXT", text)
                 if("S" in text or "s" in text):
@@ -287,18 +290,18 @@ def stop():
     update_sensors()
      # Sleep for 3 seconds
 
-def go_forward(x, alreadyGone=0):
+def go_forward(x, alreadyGone=0, speed=6.0):
     global posLeft, posRight
-    """
+    
     imgarr[0][1] = cam.getImage()
     imgarr[0][0] = cam_left.getImage()
     imgarr[0][2] = cam_right.getImage()
     print("FIRST SAVED IMAGE")
-    """
+    
     left_motor.setPosition(posLeft+x)
     right_motor.setPosition(posRight+x)
-    left_motor.setVelocity(4.5)
-    right_motor.setVelocity(4.5)
+    left_motor.setVelocity(speed)
+    right_motor.setVelocity(speed)
     left = left_encoder.getValue()
     # print("Starting, ", (left))
     stops = [False, False]
@@ -307,7 +310,7 @@ def go_forward(x, alreadyGone=0):
         update_sensors()
         right_motor.setVelocity(left_motor.getVelocity())
         #print("Binary colorval:", colorval)
-        """
+        
         if(left > left_motor.getTargetPosition()/3 and stops[0] == False):
             imgarr[1][1] = cam.getImage()
             imgarr[1][0] = cam_left.getImage()
@@ -320,7 +323,7 @@ def go_forward(x, alreadyGone=0):
             imgarr[2][2] = cam_right.getImage()
             stops[1] = True
             print("THIRD SAVED IMAGE")
-        """
+        
         #img = np.array(np.frombuffer(colorval, np.uint8).reshape((color.getHeight(), color.getWidth(), 4)))
         #img[:,:,2] = np.zeros([img.shape[0], img.shape[1]])
         #hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)[int(color.getHeight()/2)][int(color.getWidth()/2)]
@@ -382,7 +385,7 @@ def turn(deg):
     #clearVictims()
     left_motor.setPosition(float("inf"))
     right_motor.setPosition(float("inf"))
-    kP = 0.03
+    kP = 0.05
     kI = 0.0003
     error = 0
     totalerror = 0
@@ -439,7 +442,7 @@ def goTile(dir):
         backwards = True
         
         print("Pos", pos)
-    if(frontl<=0.1 and frontr<=0.1):
+    if(frontl<=0.15 and frontr<=0.15):
         left_motor.setPosition(float("inf"))
         right_motor.setPosition(float("inf"))
         calcfront = 0.95510271724 * frontl
@@ -490,7 +493,7 @@ def goTile(dir):
         #go_forward(3.25)
         return True
     
-def goTileWithVictim(dir):
+def goTileWithVictim(dir, obs = False):
     global pos
     victim = 0
     checkHeat()
@@ -523,7 +526,7 @@ def goTileWithVictim(dir):
             pos = pos+360
         
         print("Pos", pos)
-    if(frontl<=0.1 and frontr<=0.1):
+    if(frontl<=0.15 and frontr<=0.15 and not obs):
         left_motor.setPosition(float("inf"))
         right_motor.setPosition(float("inf"))
         calcfront = 0.95510271724 * frontl
@@ -549,11 +552,13 @@ def goTileWithVictim(dir):
 
     # HEAT VICTIM DETECTION
     checkHeat()
+    """
     imgarr[0][1] = cam.getImage()
     imgarr[0][0] = cam_left.getImage()
     imgarr[0][2] = cam_right.getImage()
+    """
     print("Go Forward")
-    x = go_forward(2.0)
+    x = go_forward(6.0)
     
     if(not x):
         print("SAW Hole")
@@ -561,12 +566,13 @@ def goTileWithVictim(dir):
     
     else:
         print("No Hole")
-        #return True
-    
+        return True
+    """
     imgarr[1][1] = cam.getImage()
     imgarr[1][0] = cam_left.getImage()
     imgarr[1][2] = cam_right.getImage()
-    x = go_forward(2.0, 2.0)
+    
+    x = go_forward(2.01, 2.01)
     #update_sensors()
     #leftAtCapture = left
     #rightAtCapture = right
@@ -584,7 +590,7 @@ def goTileWithVictim(dir):
     imgarr[2][0] = cam_left.getImage()
     imgarr[2][2] = cam_right.getImage()
 
-    x = go_forward(2.0, 4.0)
+    x = go_forward(2.01, 4.02)
     if(not x):
         print("SAW Hole")
         return False
@@ -593,8 +599,9 @@ def goTileWithVictim(dir):
         print("No Hole")
         return True
         #go_forward(3.25)
-
-    checkHeat()
+    """
+    #checkHeat()
+    
 
 #go_forward(5.85)
 #print(left_heat_sensor.getValue())
@@ -625,7 +632,7 @@ while robot.step(timestep) != -1:
     turn(pos)
     print("Pos", pos)
     if(frontl<=0.15):
-         print("Obstacle in front")
+         
          frontObs = True     
     pos =(-17+pos)%360
     
@@ -636,7 +643,7 @@ while robot.step(timestep) != -1:
     turn(pos)
     print("Pos", pos)
     
-    if((frontl <= 0.13 and frontr<=0.13) or frontObs):
+    if((frontl <= 0.13 and frontr<=0.13) and frontObs):
         print("Wall in front")
         if letters["Center"] != "None":
             print("Reporting Victim Center!")
@@ -644,7 +651,10 @@ while robot.step(timestep) != -1:
             stop()      
             clearVictims()
         AI.markWall(AI.direction)
-    frontObs = False
+        frontObs = False
+    elif(frontObs):
+        AI.markWall(AI.direction)
+        print("Saw only obstacle")
     if(right <= 0.14):
         print("Wall to right")
         if letters["Right"] != "None":
@@ -693,12 +703,14 @@ while robot.step(timestep) != -1:
             for i in range(len(commands)):
                 if(i == len(commands)-1): # Last command
                     successful = goTileWithVictim(commands[i])
+                
                 else:
                     successful = goTile(commands[i])
+                    frontObs = False
                 update_sensors()
         else:
-            successful = goTileWithVictim(commands[0])
-
+            successful = goTileWithVictim(commands[0], frontObs)
+    frontObs = False
 
     # Only write to file once commands are successfully executed
     AI.flush() # Actually write data to file
